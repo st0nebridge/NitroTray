@@ -1,0 +1,16 @@
+# cargo-mutants configuration: equivalent mutants are excluded, each with its reason.
+#
+# Each pattern below names a mutant that cannot change observable behaviour:
+#
+# 1. `|` -> `^` where the operands occupy disjoint bits (ids in the low byte, values shifted above
+#    them), so OR and XOR produce identical integers.
+# 2. `supported_sensors_input -> 0`: the function already returns the constant 0x0000.
+# 3. `Capabilities::none -> Default::default()`: `none()` *is* `Self::default()`.
+# 4. `ramp` `<` -> `<=`: when wanted == previous both branches return that same value.
+exclude_re = [
+    'src/acer/acpi\.rs:\d+:\d+: replace \| with \^ in (sensor_reading_input|fan_speed_set_input|misc_set_input|fan_behavior_set_input)$',
+    'src/acer/acpi\.rs:\d+:\d+: replace \| with \^$',
+    'replace supported_sensors_input -> u32 with 0$',
+    'replace Capabilities::none -> Self with Default::default\(\)$',
+    'src/service/curve\.rs:\d+:\d+: replace < with <= in ramp$',
+]

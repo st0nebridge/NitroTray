@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NitroTray</title>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/popup.css">
+</head>
+<body>
+<main class="popup" id="popup" aria-label="NitroSense quick controls">
+  <header class="hdr" data-drag>
+    <div class="brand" aria-hidden="true"><span class="acer">acer</span></div>
+    <div class="title" aria-hidden="true">
+      <div class="wordmark"><b>NITRO</b><span>SENSE</span></div>
+      <div class="strap">CONTROL<i></i>COOL<i></i>PLAY</div>
+    </div>
+    <h1 class="sr-only">NitroSense</h1>
+    <div class="hdr-actions">
+      <button class="icon-btn gear" id="btn-settings" aria-label="Settings" data-icon="gear"><span class="badge" hidden></span></button>
+      <span class="hdr-sep" aria-hidden="true"></span>
+      <button class="icon-btn close" id="btn-close" aria-label="Close" data-icon="close"></button>
+    </div>
+  </header>
+
+  <section class="fans" aria-label="Fan speeds">
+    <button class="fan" id="fan-cpu" data-fan="cpu_fan">
+      <span class="ring"><svg class="ring-svg" viewBox="0 0 54 54" aria-hidden="true"><circle class="track" cx="27" cy="27" r="24.5"/><circle class="arc" cx="27" cy="27" r="24.5" pathLength="100"/><circle class="disc" cx="27" cy="27" r="21.4"/></svg><span class="ring-fan" data-icon="fan"></span></span>
+      <span class="fan-text"><span class="fan-label">CPU FAN</span><span class="fan-value num"><b>--</b><small>RPM</small></span></span>
+      <span class="chev" data-icon="chevron"></span>
+    </button>
+    <span class="vline" aria-hidden="true"></span>
+    <button class="fan" id="fan-gpu" data-fan="gpu_fan">
+      <span class="ring"><svg class="ring-svg" viewBox="0 0 54 54" aria-hidden="true"><circle class="track" cx="27" cy="27" r="24.5"/><circle class="arc" cx="27" cy="27" r="24.5" pathLength="100"/><circle class="disc" cx="27" cy="27" r="21.4"/></svg><span class="ring-fan" data-icon="fan"></span></span>
+      <span class="fan-text"><span class="fan-label">GPU FAN</span><span class="fan-value num"><b>--</b><small>RPM</small></span></span>
+      <span class="chev" data-icon="chevron"></span>
+    </button>
+  </section>
+
+  <div class="rule rule-2" aria-hidden="true"></div>
+
+  <section class="compute" aria-label="Processor telemetry">
+    <div class="proc" id="proc-cpu" data-proc="cpu">
+      <h2>CPU</h2>
+      <span class="proc-icon cpu-icon" data-icon="cpu"></span>
+      <div class="temp num"><b>--</b><small>°C</small></div>
+      <div class="sub num"><b class="util">--%</b><span class="pipe"></span><span class="mhz"><b>--</b> MHz</span></div>
+    </div>
+    <span class="vline" aria-hidden="true"></span>
+    <div class="proc" id="proc-gpu" data-proc="gpu">
+      <h2>GPU</h2>
+      <span class="proc-icon gpu-icon" data-icon="gpu"></span>
+      <div class="temp num"><b>--</b><small>°C</small></div>
+      <div class="sub num"><b class="util">--%</b><span class="pipe"></span><span class="mhz"><b>--</b> MHz</span></div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="ctl" id="fan-control">
+      <button class="ctl-head" id="fan-head" aria-label="Fan Control — open fan curve editor">
+        <span class="ctl-icon" data-icon="fan"></span><span class="ctl-title">Fan Control</span><span class="chev" data-icon="chevron"></span>
+      </button>
+      <div class="seg" id="fan-seg" role="radiogroup" aria-label="Fan mode">
+        <button role="radio" data-value="auto"><span data-icon="fan"></span><span>Auto</span></button>
+        <button role="radio" data-value="max"><span data-icon="fanMax"></span><span>Max</span></button>
+        <button role="radio" data-value="custom"><span data-icon="fanCustom"></span><span>Custom</span></button>
+      </div>
+    </div>
+    <div class="ctl" id="perf-control">
+      <button class="ctl-head" id="perf-head" aria-label="Performance Mode — open NitroSense">
+        <span class="ctl-icon" data-icon="speedometer"></span><span class="ctl-title">Performance Mode</span><span class="tag" id="perf-other" hidden></span><span class="chev" data-icon="chevron"></span>
+      </button>
+      <div class="seg perf" id="perf-seg" role="radiogroup" aria-label="Performance mode">
+        <button role="radio" data-value="quiet"><span data-icon="leaf"></span><span>Quiet</span></button>
+        <button role="radio" data-value="default"><span data-icon="nitro"></span><span>Default</span></button>
+        <button role="radio" data-value="performance"><span data-icon="performance"></span><span>Performance</span></button>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule rule-3" aria-hidden="true"></div>
+
+  <footer class="ftr">
+    <button class="ftr-btn" id="btn-monitor"><span class="ftr-icon" data-icon="monitor"></span><span>Open Full Monitoring</span><span class="chev" data-icon="chevron"></span></button>
+    <span class="ftr-sep" aria-hidden="true"></span>
+    <button class="ftr-btn" id="btn-quick"><span class="ftr-icon" data-icon="gamepad"></span><span>Acer Quick Settings</span><span class="chev" data-icon="chevron"></span></button>
+  </footer>
+
+  <div class="notice" id="notice" role="status" aria-live="polite" hidden>
+    <div class="notice-text"><strong></strong><span></span></div>
+    <button class="notice-x" aria-label="Dismiss" data-icon="close"></button>
+  </div>
+</main>
+<script type="module" src="js/popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NitroTray</title>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/window.css">
+</head>
+<body>
+<div class="shell">
+  <nav class="side" aria-label="Sections">
+    <div class="side-brand"><span class="logo" data-icon="nitro"></span><span><b>NITRO</b>TRAY</span></div>
+    <button class="nav" data-page="monitoring"><span data-icon="chart"></span>Monitoring</button>
+    <button class="nav" data-page="fan_curve"><span data-icon="curve"></span>Fan Curve</button>
+    <button class="nav" data-page="settings"><span data-icon="gear"></span>Settings</button>
+    <div class="side-status" id="side-status"><i></i><span></span></div>
+  </nav>
+
+  <main class="content">
+    <section class="page" id="page-monitoring" aria-labelledby="h-mon" hidden>
+      <header class="page-head"><h1 id="h-mon">Full Monitoring</h1><p class="muted" id="mon-window">Last 5 minutes</p></header>
+      <div class="charts" id="charts"></div>
+    </section>
+
+    <section class="page" id="page-fan_curve" aria-labelledby="h-curve" hidden>
+      <header class="page-head"><h1 id="h-curve">Custom Fan Curve</h1>
+        <p class="muted">Drag points or edit values. Temperatures must rise left to right, fan speed may never drop as it gets hotter, minimum 20 %, and at 90 °C or more the fans always run at 100 %.</p>
+      </header>
+      <div class="curve-bar">
+        <label>Profile name <input id="curve-name" maxlength="40" autocomplete="off"></label>
+        <span class="spacer"></span>
+        <button class="btn" id="curve-reset">Reset to default</button>
+        <button class="btn" id="curve-save">Save</button>
+        <button class="btn primary" id="curve-apply">Save &amp; Apply</button>
+      </div>
+      <p class="error" id="curve-error" role="alert" hidden></p>
+      <div class="curves">
+        <div class="curve-card" data-fan="cpu"><h2>CPU fan</h2><svg class="curve-svg" viewBox="0 0 420 260" role="img" aria-label="CPU fan curve"></svg><div class="points"></div></div>
+        <div class="curve-card" data-fan="gpu"><h2>GPU fan</h2><svg class="curve-svg" viewBox="0 0 420 260" role="img" aria-label="GPU fan curve"></svg><div class="points"></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-settings" aria-labelledby="h-set" hidden>
+      <header class="page-head"><h1 id="h-set">Settings</h1></header>
+      <form id="settings-form" class="settings" autocomplete="off"></form>
+      <div class="save-bar"><span class="muted" id="settings-status"></span><button class="btn primary" id="settings-save" type="button">Save settings</button></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="js/window.js"></script>
+</body>
+</html>

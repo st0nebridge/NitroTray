@@ -1,0 +1,75 @@
+{
+  "appearance": {
+    "accent_intensity": "normal",
+    "reduced_motion": false,
+    "theme": "dark",
+    "transparency": false
+  },
+  "fan": {
+    "calibration": {
+      "cpu_max_rpm": null,
+      "gpu_max_rpm": null
+    },
+    "custom_profile": null
+  },
+  "general": {
+    "close_on_focus_loss": true,
+    "hotkey": "Win+Alt+N",
+    "hotkey_enabled": true,
+    "open_popup_on_tray_click": true,
+    "start_minimised": true
+  },
+  "integration": {
+    "nitrosense_app_id": "AcerIncorporated.NitroSenseV31_48frkmn4z8aw4!App"
+  },
+  "startup": {
+    "last_fan_mode": null,
+    "last_performance_mode": null,
+    "reapply_last_modes": false
+  },
+  "telemetry": {
+    "background_interval_ms": 2000,
+    "cpu_thresholds": {
+      "critical_c": 95.0,
+      "hot_c": 85.0,
+      "warm_c": 70.0
+    },
+    "fan_telemetry": true,
+    "gpu_driver_queries": true,
+    "gpu_thresholds": {
+      "critical_c": 90.0,
+      "hot_c": 80.0,
+      "warm_c": 70.0
+    },
+    "refresh_rate": "normal",
+    "temperature_unit": "celsius"
+  },
+  "tray_icons": {
+    "cpu": {
+      "background_color": "#000000",
+      "enabled": true,
+      "fan_color": "#22D3EE",
+      "fan_max_rpm": 0,
+      "fill": true,
+      "show_fan": true,
+      "show_temperature": true,
+      "temperature_color": "#FF2A2A",
+      "temperature_max_c": 100.0,
+      "temperature_min_c": 30.0
+    },
+    "gpu": {
+      "background_color": "#000000",
+      "enabled": true,
+      "fan_color": "#3DDC84",
+      "fan_max_rpm": 0,
+      "fill": true,
+      "show_fan": true,
+      "show_temperature": true,
+      "temperature_color": "#FF9A2E",
+      "temperature_max_c": 100.0,
+      "temperature_min_c": 30.0
+    },
+    "hover_details": true,
+    "show_app_icon": true
+  }
+}

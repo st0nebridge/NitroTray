@@ -1,0 +1,240 @@
+<fieldset>
+<legend>General</legend>
+<div class="row">
+<label for="f--autostart">Start with Windows<span class="hint">Adds NitroTray to your sign-in apps. Applied immediately.</span>
+</label>
+<input type="checkbox" data-path="$autostart" id="f--autostart">
+</div>
+<div class="row">
+<label for="f-general-start_minimised">Start minimised<span class="hint">When started with Windows, stay in the tray instead of opening the popup.</span>
+</label>
+<input type="checkbox" data-path="general.start_minimised" id="f-general-start_minimised">
+</div>
+<div class="row">
+<label for="f-general-open_popup_on_tray_click">Open popup on tray click<span class="hint">Off: a left click opens the tray menu instead.</span>
+</label>
+<input type="checkbox" data-path="general.open_popup_on_tray_click" id="f-general-open_popup_on_tray_click">
+</div>
+<div class="row">
+<label for="f-general-close_on_focus_loss">Close popup on focus loss</label>
+<input type="checkbox" data-path="general.close_on_focus_loss" id="f-general-close_on_focus_loss">
+</div>
+<div class="row">
+<label for="f-general-hotkey_enabled">Popup shortcut</label>
+<input type="checkbox" data-path="general.hotkey_enabled" id="f-general-hotkey_enabled">
+</div>
+<div class="row">
+<label for="f-general-hotkey">Shortcut keys<span class="hint">e.g. Win+Alt+N — needs Ctrl, Alt or Win.</span>
+</label>
+<input type="text" data-path="general.hotkey" id="f-general-hotkey" maxlength="40">
+</div>
+</fieldset>
+<fieldset>
+<legend>Telemetry</legend>
+<div class="row">
+<label for="f-telemetry-temperature_unit">Temperature unit</label>
+<select data-path="telemetry.temperature_unit" id="f-telemetry-temperature_unit">
+<option value="celsius">°C</option>
+<option value="fahrenheit">°F</option>
+</select>
+</div>
+<div class="row">
+<label for="f-telemetry-refresh_rate">Refresh rate while open</label>
+<select data-path="telemetry.refresh_rate" id="f-telemetry-refresh_rate">
+<option value="fast">Fast (0.5 s)</option>
+<option value="normal">Normal (0.5–1 s)</option>
+<option value="relaxed">Relaxed (1–2 s)</option>
+</select>
+</div>
+<div class="row">
+<label for="f-telemetry-background_interval_ms">Tray icon refresh (ms)<span class="hint">While the popup is closed. Only temperatures and fans are read.</span>
+</label>
+<input type="number" data-path="telemetry.background_interval_ms" id="f-telemetry-background_interval_ms" min="1000" max="5000" step="500">
+</div>
+<div class="row">
+<label for="f-telemetry-gpu_driver_queries">GPU driver telemetry (NVML)<span class="hint">Utilisation and clocks while a window is open. May briefly wake the discrete GPU.</span>
+</label>
+<input type="checkbox" data-path="telemetry.gpu_driver_queries" id="f-telemetry-gpu_driver_queries">
+</div>
+<div class="row">
+<label for="f-telemetry-fan_telemetry">Fan telemetry</label>
+<input type="checkbox" data-path="telemetry.fan_telemetry" id="f-telemetry-fan_telemetry">
+</div>
+<div class="row">
+<label for="f-telemetry-cpu_thresholds-warm_c">CPU warm from (°C)</label>
+<input type="number" data-path="telemetry.cpu_thresholds.warm_c" id="f-telemetry-cpu_thresholds-warm_c" min="30" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-telemetry-cpu_thresholds-hot_c">CPU red from (°C)</label>
+<input type="number" data-path="telemetry.cpu_thresholds.hot_c" id="f-telemetry-cpu_thresholds-hot_c" min="30" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-telemetry-cpu_thresholds-critical_c">CPU critical from (°C)</label>
+<input type="number" data-path="telemetry.cpu_thresholds.critical_c" id="f-telemetry-cpu_thresholds-critical_c" min="30" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-telemetry-gpu_thresholds-warm_c">GPU warm from (°C)</label>
+<input type="number" data-path="telemetry.gpu_thresholds.warm_c" id="f-telemetry-gpu_thresholds-warm_c" min="30" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-telemetry-gpu_thresholds-hot_c">GPU red from (°C)</label>
+<input type="number" data-path="telemetry.gpu_thresholds.hot_c" id="f-telemetry-gpu_thresholds-hot_c" min="30" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-telemetry-gpu_thresholds-critical_c">GPU critical from (°C)</label>
+<input type="number" data-path="telemetry.gpu_thresholds.critical_c" id="f-telemetry-gpu_thresholds-critical_c" min="30" max="110" step="1">
+</div>
+</fieldset>
+<fieldset>
+<legend>Tray icons</legend>
+<div class="row">
+<label for="f-tray_icons-show_app_icon">NitroTray app icon</label>
+<input type="checkbox" data-path="tray_icons.show_app_icon" id="f-tray_icons-show_app_icon">
+</div>
+<div class="row">
+<label for="f-tray_icons-hover_details">Details on hover<span class="hint">Hovering the CPU or GPU icon shows its temperature and fan history instead of the plain tooltip.</span>
+</label>
+<input type="checkbox" data-path="tray_icons.hover_details" id="f-tray_icons-hover_details">
+</div>
+<p class="muted">System Informer–style graphs: temperature fill with the fan-speed line on top. Windows may hide new icons in the overflow — use “Show icons on taskbar” below.</p>
+<div class="icon-grid">
+<div class="icon-card" data-icon-card="cpu">
+<h3>
+<canvas width="32" height="32" data-preview="cpu">
+</canvas>CPU icon</h3>
+<div class="row">
+<label for="f-tray_icons-cpu-enabled">Show this icon</label>
+<input type="checkbox" data-path="tray_icons.cpu.enabled" id="f-tray_icons-cpu-enabled">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-show_temperature">Temperature trace</label>
+<input type="checkbox" data-path="tray_icons.cpu.show_temperature" id="f-tray_icons-cpu-show_temperature">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-show_fan">Fan-speed trace</label>
+<input type="checkbox" data-path="tray_icons.cpu.show_fan" id="f-tray_icons-cpu-show_fan">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-temperature_color">Temperature colour</label>
+<input type="color" data-path="tray_icons.cpu.temperature_color" id="f-tray_icons-cpu-temperature_color">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-fan_color">Fan colour</label>
+<input type="color" data-path="tray_icons.cpu.fan_color" id="f-tray_icons-cpu-fan_color">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-background_color">Background</label>
+<input type="color" data-path="tray_icons.cpu.background_color" id="f-tray_icons-cpu-background_color">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-fill">Fill under temperature</label>
+<input type="checkbox" data-path="tray_icons.cpu.fill" id="f-tray_icons-cpu-fill">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-temperature_min_c">Graph floor (°C)</label>
+<input type="number" data-path="tray_icons.cpu.temperature_min_c" id="f-tray_icons-cpu-temperature_min_c" min="0" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-temperature_max_c">Graph ceiling (°C)</label>
+<input type="number" data-path="tray_icons.cpu.temperature_max_c" id="f-tray_icons-cpu-temperature_max_c" min="10" max="120" step="1">
+</div>
+<div class="row">
+<label for="f-tray_icons-cpu-fan_max_rpm">Fan full scale (RPM, 0 = auto)</label>
+<input type="number" data-path="tray_icons.cpu.fan_max_rpm" id="f-tray_icons-cpu-fan_max_rpm" min="0" max="20000" step="100">
+</div>
+</div>
+<div class="icon-card" data-icon-card="gpu">
+<h3>
+<canvas width="32" height="32" data-preview="gpu">
+</canvas>GPU icon</h3>
+<div class="row">
+<label for="f-tray_icons-gpu-enabled">Show this icon</label>
+<input type="checkbox" data-path="tray_icons.gpu.enabled" id="f-tray_icons-gpu-enabled">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-show_temperature">Temperature trace</label>
+<input type="checkbox" data-path="tray_icons.gpu.show_temperature" id="f-tray_icons-gpu-show_temperature">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-show_fan">Fan-speed trace</label>
+<input type="checkbox" data-path="tray_icons.gpu.show_fan" id="f-tray_icons-gpu-show_fan">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-temperature_color">Temperature colour</label>
+<input type="color" data-path="tray_icons.gpu.temperature_color" id="f-tray_icons-gpu-temperature_color">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-fan_color">Fan colour</label>
+<input type="color" data-path="tray_icons.gpu.fan_color" id="f-tray_icons-gpu-fan_color">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-background_color">Background</label>
+<input type="color" data-path="tray_icons.gpu.background_color" id="f-tray_icons-gpu-background_color">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-fill">Fill under temperature</label>
+<input type="checkbox" data-path="tray_icons.gpu.fill" id="f-tray_icons-gpu-fill">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-temperature_min_c">Graph floor (°C)</label>
+<input type="number" data-path="tray_icons.gpu.temperature_min_c" id="f-tray_icons-gpu-temperature_min_c" min="0" max="110" step="1">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-temperature_max_c">Graph ceiling (°C)</label>
+<input type="number" data-path="tray_icons.gpu.temperature_max_c" id="f-tray_icons-gpu-temperature_max_c" min="10" max="120" step="1">
+</div>
+<div class="row">
+<label for="f-tray_icons-gpu-fan_max_rpm">Fan full scale (RPM, 0 = auto)</label>
+<input type="number" data-path="tray_icons.gpu.fan_max_rpm" id="f-tray_icons-gpu-fan_max_rpm" min="0" max="20000" step="100">
+</div>
+</div>
+</div>
+</fieldset>
+<fieldset>
+<legend>Appearance</legend>
+<div class="row">
+<label for="f-appearance-theme">Theme</label>
+<select data-path="appearance.theme" id="f-appearance-theme">
+<option value="dark">Dark</option>
+<option value="light">Light</option>
+<option value="match_windows">Match Windows</option>
+</select>
+</div>
+<div class="row">
+<label for="f-appearance-transparency">Transparency<span class="hint">Translucent popup background (Windows 11 backdrop).</span>
+</label>
+<input type="checkbox" data-path="appearance.transparency" id="f-appearance-transparency">
+</div>
+<div class="row">
+<label for="f-appearance-accent_intensity">Accent intensity</label>
+<select data-path="appearance.accent_intensity" id="f-appearance-accent_intensity">
+<option value="subtle">Subtle</option>
+<option value="normal">Normal</option>
+<option value="vivid">Vivid</option>
+</select>
+</div>
+<div class="row">
+<label for="f-appearance-reduced_motion">Reduced motion<span class="hint">No fan-icon rotation or transitions.</span>
+</label>
+<input type="checkbox" data-path="appearance.reduced_motion" id="f-appearance-reduced_motion">
+</div>
+</fieldset>
+<fieldset>
+<legend>Startup</legend>
+<div class="row">
+<label for="f-startup-reapply_last_modes">Re-apply last fan and performance modes at startup<span class="hint">Off by default: NitroTray never changes hardware modes at boot unless you opt in.</span>
+</label>
+<input type="checkbox" data-path="startup.reapply_last_modes" id="f-startup-reapply_last_modes">
+</div>
+</fieldset>
+<fieldset>
+<legend>Integration</legend>
+<dl class="kv" id="integration-kv">
+</dl>
+<div class="row">
+<label for="f-integration-nitrosense_app_id">NitroSense app id</label>
+<input type="text" data-path="integration.nitrosense_app_id" id="f-integration-nitrosense_app_id" maxlength="200">
+</div>
+<div class="actions" id="integration-actions">
+</div>
+</fieldset>

@@ -1,0 +1,107 @@
+
+  <header class="fly-hdr">
+    <span class="fly-icon" id="fly-icon" aria-hidden="true">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" stroke-width="1.25">
+<rect x="5" y="5" width="14" height="14" rx="2">
+</rect>
+<rect x="8.3" y="8.3" width="7.4" height="7.4" rx="1">
+</rect>
+<path d="M9 2v3M9 19v3M2 9h3M19 9h3">
+</path>
+<path d="M12 2v3M12 19v3M2 12h3M19 12h3">
+</path>
+<path d="M15 2v3M15 19v3M2 15h3M19 15h3">
+</path>
+</svg>
+</span>
+    <div class="fly-title">
+      <h1 id="fly-title">CPU</h1>
+      <span class="fly-span" id="fly-span">Temperature and fan speed · last 10 min</span>
+    </div>
+    <div class="fly-now">
+      <div class="fly-temp num lvl-hot" id="fly-temp">
+<b>92</b>
+<small>°C</small>
+</div>
+      <div class="fly-fan num" id="fly-fan">
+<b>4400</b> RPM</div>
+    </div>
+  </header>
+  <div class="fly-graph">
+    <canvas id="fly-canvas" aria-hidden="true" width="468" height="183">
+</canvas>
+    <span class="axis axis-top num" id="axis-top">100°C</span>
+    <span class="axis axis-bottom num" id="axis-bottom">30°C</span>
+    <span class="axis axis-fan num" id="axis-fan">4840 RPM</span>
+  </div>
+  <footer class="fly-ftr">
+    <span class="fly-stats num" id="fly-stats">Min 60° · Avg 77° · Max 92°</span>
+    <span class="fly-legend">
+<i class="sw sw-temp" id="sw-temp" style="background: rgb(255, 42, 42);">
+</i>Temp<i class="sw sw-fan" id="sw-fan" style="background: rgb(34, 211, 238);">
+</i>
+<span id="legend-fan">Fan</span>
+</span>
+  </footer>
+
+
+setTransform(1.5, 0, 0, 1.5, 0, 0)
+clearRect(0, 0, 312, 122)
+strokeStyle = "rgba(128,136,144,.18)"
+lineWidth = 1
+beginPath()
+moveTo(0, 31.5)
+lineTo(312, 31.5)
+stroke()
+beginPath()
+moveTo(0, 61.5)
+lineTo(312, 61.5)
+stroke()
+beginPath()
+moveTo(0, 92.5)
+lineTo(312, 92.5)
+stroke()
+fillStyle = "rgba(255,42,42,0.43)"
+beginPath()
+moveTo(307.826, 122)
+lineTo(307.826, 69.714)
+lineTo(308.87, 59.257)
+lineTo(308.87, 122)
+closePath()
+fill()
+strokeStyle = "#FF2A2A"
+lineWidth = 1.6
+lineJoin = "round"
+beginPath()
+moveTo(307.826, 69.714)
+lineTo(308.87, 59.257)
+stroke()
+fillStyle = "rgba(255,42,42,0.43)"
+beginPath()
+moveTo(310.957, 122)
+lineTo(310.957, 20.914)
+lineTo(312, 13.943)
+lineTo(312, 122)
+closePath()
+fill()
+strokeStyle = "#FF2A2A"
+lineWidth = 1.6
+lineJoin = "round"
+beginPath()
+moveTo(310.957, 20.914)
+lineTo(312, 13.943)
+stroke()
+strokeStyle = "#22D3EE"
+lineWidth = 1.4
+lineJoin = "round"
+beginPath()
+moveTo(307.826, 46.38)
+lineTo(308.87, 41.339)
+stroke()
+strokeStyle = "#22D3EE"
+lineWidth = 1.4
+lineJoin = "round"
+beginPath()
+moveTo(310.957, 18.653)
+lineTo(312, 11.091)
+stroke()

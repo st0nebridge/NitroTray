@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Popup vs reference</title>
+<style>
+  body { margin: 0; background: #111; color: #ddd; font: 12px/1.5 ui-monospace, Consolas, monospace; padding: 12px; }
+  table { border-collapse: collapse; }
+  td, th { padding: 1px 10px; text-align: right; }
+  td:first-child, th:first-child { text-align: left; }
+  .bad { color: #ff6b6b; } .ok { color: #7bd88f; }
+</style>
+</head>
+<body>
+<h3>Ink bounding boxes, DIP (ours − reference); |Δ| ≤ 1.5 counts as a match</h3>
+<table id="t"><tr><th>element</th><th>dx</th><th>dy</th><th>dw</th><th>dh</th><th>ref box</th></tr></table>
+<p id="summary"></p>
+<script type="module">
+  // Reference: 2x render, popup at image (152,90). Ours: headless 2x snap at (0,0).
+  // onload rather than decode(): decode() can stall while the tab is hidden.
+  const img = async (src) => { const i = new Image(); await new Promise((ok, fail) => { i.onload = ok; i.onerror = fail; i.src = `${src}?t=${Date.now()}`; });
+    const c = document.createElement('canvas'); c.width = i.width; c.height = i.height; const g = c.getContext('2d'); g.drawImage(i, 0, 0); return g; };
+  const ref = await img('/docs/reference/nitrosense-compact-reference.webp');
+  const ours = await img('/reports/ui/popup@2x.png');
+  const light = (r, g, b) => r > 150 && g > 150 && b > 150;
+  const red = (r, g, b) => r > 170 && g < 90 && b < 90;
+  const orange = (r, g, b) => r > 200 && g > 120 && g < 200 && b < 110;
+  const grey = (r, g, b) => r > 110 && g > 110 && b > 110;
+  const regions = {
+    acer: [18, 14, 112, 46, light], nitrosense: [180, 14, 400, 39, light], strap: [180, 43, 400, 60, grey],
+    gear: [455, 14, 485, 46, light], close: [525, 18, 555, 42, light], hdrsep: [500, 14, 512, 46, light],
+    cpufan_label: [100, 86, 200, 102, light], cpu_rpm_val: [100, 105, 170, 132, light], cpu_rpm_unit: [172, 110, 225, 132, grey],
+    cpu_chev: [245, 95, 268, 125, light], gpufan_label: [380, 86, 480, 102, light], gpu_rpm_val: [380, 105, 456, 132, light],
+    gpu_rpm_unit: [458, 110, 510, 132, grey], cpu_label: [20, 165, 75, 186, light], cpu_icon: [20, 195, 72, 240, grey],
+    cpu_temp: [85, 180, 130, 210, red], cpu_degc: [130, 180, 165, 210, red], cpu_util: [85, 216, 135, 236, light],
+    cpu_pipe: [140, 214, 152, 238, grey], cpu_mhz: [155, 216, 240, 236, grey], gpu_label: [305, 165, 350, 186, light],
+    gpu_icon: [305, 195, 368, 240, grey], gpu_temp: [375, 180, 420, 210, orange], gpu_util: [375, 216, 425, 236, light],
+    gpu_mhz: [450, 216, 540, 236, grey], fanctl_icon: [20, 265, 57, 295, light], fanctl_title: [58, 268, 200, 292, light],
+    fanctl_chev: [248, 268, 270, 292, light], perf_icon: [300, 265, 342, 295, light], perf_title: [344, 268, 500, 292, light],
+    auto_icon: [45, 305, 90, 337, red], auto_label: [45, 338, 90, 356, red], max_label: [110, 338, 160, 356, light],
+    custom_label: [190, 338, 262, 356, light], quiet_label: [305, 338, 360, 356, light], default_label: [380, 338, 452, 356, red],
+    perf_label: [456, 338, 556, 356, light], mon_icon: [18, 398, 57, 428, light], mon_text: [60, 400, 225, 426, light],
+    mon_chev: [245, 400, 268, 426, light], quick_icon: [345, 398, 392, 428, light], quick_text: [393, 400, 530, 426, light],
+    quick_chev: [532, 400, 556, 426, light],
+  };
+  function bbox(g, ox, oy, [x0, y0, x1, y1, test]) {
+    const X0 = Math.round(x0 * 2 + ox), Y0 = Math.round(y0 * 2 + oy), W = Math.round((x1 - x0) * 2), H = Math.round((y1 - y0) * 2);
+    const d = g.getImageData(X0, Y0, W, H).data; let a = 1e9, b = 1e9, c = -1, e = -1;
+    for (let i = 0; i < d.length; i += 4) if (test(d[i], d[i + 1], d[i + 2])) { const k = i / 4, x = k % W, y = (k / W) | 0; a = Math.min(a, x); c = Math.max(c, x); b = Math.min(b, y); e = Math.max(e, y); }
+    return c < 0 ? null : [(a + X0 - ox) / 2, (b + Y0 - oy) / 2, (c + X0 - ox) / 2, (e + Y0 - oy) / 2];
+  }
+  const t = document.getElementById('t'); let good = 0, total = 0; const report = {};
+  for (const [k, r] of Object.entries(regions)) {
+    const R = bbox(ref, 152, 90, r), O = bbox(ours, 0, 0, r);
+    const row = t.insertRow(); row.insertCell().textContent = k;
+    if (!R || !O) { row.insertCell().textContent = `missing ${!R ? 'ref' : 'ours'}`; continue; }
+    const d = [O[0] - R[0], O[1] - R[1], (O[2] - O[0]) - (R[2] - R[0]), (O[3] - O[1]) - (R[3] - R[1])];
+    report[k] = d.map((v) => +v.toFixed(1));
+    for (const v of d) { const c = row.insertCell(); c.textContent = (v >= 0 ? '+' : '') + v.toFixed(1); c.className = Math.abs(v) <= 1.5 ? 'ok' : 'bad'; total++; if (Math.abs(v) <= 1.5) good++; }
+    row.insertCell().textContent = R.join(', ');
+  }
+  document.getElementById('summary').textContent = `${good}/${total} measurements within ±1.5 DIP`;
+  window.__compare = { good, total, report };
+</script>
+</body>
+</html>

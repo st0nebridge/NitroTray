@@ -1,0 +1,23 @@
+# Dependencies / build / secrets
+node_modules/
+vendor/
+dist/
+build/
+target/
+.env
+.env.*
+.DS_Store
+*.log
+tmp/
+cache/
+secrets/
+# Tooling output
+coverage/
+mutants.out*/
+reports/
+*.profraw
+*.pdb
+.stryker-tmp/
+
+# Archive of removed or relocated files (local only)
+.archive/

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NitroTray</title>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/flyout.css">
+</head>
+<body>
+<main class="flyout" id="flyout" aria-label="Temperature and fan history">
+  <header class="fly-hdr">
+    <span class="fly-icon" id="fly-icon" aria-hidden="true"></span>
+    <div class="fly-title">
+      <h1 id="fly-title">--</h1>
+      <span class="fly-span" id="fly-span">Temperature and fan speed</span>
+    </div>
+    <div class="fly-now">
+      <div class="fly-temp num lvl-unknown" id="fly-temp"><b>--</b><small>°C</small></div>
+      <div class="fly-fan num" id="fly-fan"><b>--</b> RPM</div>
+    </div>
+  </header>
+  <div class="fly-graph">
+    <canvas id="fly-canvas" aria-hidden="true"></canvas>
+    <span class="axis axis-top num" id="axis-top"></span>
+    <span class="axis axis-bottom num" id="axis-bottom"></span>
+    <span class="axis axis-fan num" id="axis-fan"></span>
+  </div>
+  <footer class="fly-ftr">
+    <span class="fly-stats num" id="fly-stats">Min -- · Avg -- · Max --</span>
+    <span class="fly-legend"><i class="sw sw-temp" id="sw-temp"></i>Temp<i class="sw sw-fan" id="sw-fan"></i><span id="legend-fan">Fan</span></span>
+  </footer>
+</main>
+<script type="module" src="js/flyout.js"></script>
+</body>
+</html>

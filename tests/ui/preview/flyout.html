@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flyout preview</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0b0e0d; color: #ccc; font: 12px system-ui; }
+  .bar { padding: 6px 10px; display: flex; gap: 12px; align-items: center; }
+  .stage { display: flex; gap: 24px; padding: 16px; flex-wrap: wrap; transform-origin: 0 0; }
+  .frame { width: 340px; height: 214px; border-radius: 8px; overflow: hidden; outline: 1px solid #746b64;
+           box-shadow: 0 12px 40px rgba(0,0,0,.6); flex: none; }
+  .frame iframe { border: 0; width: 340px; height: 214px; display: block; }
+  body.bare { background: #000; }
+  body.bare .bar { display: none; }
+  body.bare .stage { padding: 0; }
+  body.bare .frame { border-radius: 0; outline: 0; box-shadow: none; }
+  body.bare .frame:not(.only) { display: none; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <label>theme <select id="theme"><option>dark</option><option>light</option></select></label>
+  <label>unit <select id="unit"><option>celsius</option><option>fahrenheit</option></select></label>
+  <label>scale <select id="scale"><option>1</option><option>2</option></select></label>
+</div>
+<div class="stage" id="stage">
+  <div class="frame"><iframe id="cpu" src="/src/ui/web/flyout.html" title="CPU flyout"></iframe></div>
+  <div class="frame"><iframe id="gpu" src="/src/ui/web/flyout.html" title="GPU flyout"></iframe></div>
+  <div class="frame"><iframe id="sparse" src="/src/ui/web/flyout.html" title="Just started"></iframe></div>
+</div>
+<script type="module">
+  // Shapes like the measured AN515-58 readings: CPU package spiking 60↔92 °C under bursty load,
+  // GPU steady in the 50s; one outage gap. Deterministic so screenshots are comparable.
+  const $ = (id) => document.getElementById(id);
+  const q = new URLSearchParams(location.search);
+  for (const k of ['theme', 'unit', 'scale']) if (q.get(k)) $(k).value = q.get(k);
+  // ?bare&only=cpu|gpu|sparse: one flyout edge to edge, for bin/ui-snap.ps1.
+  if (q.has('bare')) document.body.classList.add('bare');
+  if (q.get('only')) $(q.get('only'))?.parentElement.classList.add('only');
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const cpuT = [], cpuF = [], gpuT = [], gpuF = [];
+  let fan = 3200;
+  for (let i = 0; i < 300; i += 1) {
+    const burst = Math.sin(i / 9) > 0.35 || rnd() > 0.93;
+    const t = burst ? 86 + rnd() * 6 : 60 + rnd() * 9;
+    fan += ((burst ? 4400 : 3200) - fan) * 0.08;
+    const gap = i > 120 && i < 126;
+    cpuT.push(gap ? null : Math.round(t)); cpuF.push(gap ? null : Math.round(fan));
+    gpuT.push(gap ? null : Math.round(50 + Math.sin(i / 40) * 4 + rnd() * 2)); gpuF.push(gap ? null : Math.round(3500 + Math.sin(i / 40) * 250));
+  }
+  const toF = (c) => (c * 9) / 5 + 32;
+  function state(kind, temps, fans) {
+    const f = $('unit').value === 'fahrenheit';
+    const conv = (v) => (v == null ? null : f ? toF(v) : v);
+    const t = temps.map(conv);
+    const present = t.filter((v) => v != null);
+    const avg = present.reduce((a, b) => a + b, 0) / (present.length || 1);
+    const peak = Math.max(0, ...fans.filter((v) => v != null));
+    return {
+      kind, title: kind.toUpperCase(), temp: t.at(-1), level: kind === 'cpu' ? 'hot' : 'normal', fan_rpm: fans.at(-1),
+      temps: t, fans, capacity: 300, temp_range: [conv(30), conv(100)], fan_max: Math.max(3000, peak * 1.1),
+      temp_color: kind === 'cpu' ? '#FF2A2A' : '#FFA53A', fan_color: kind === 'cpu' ? '#22D3EE' : '#3DDC84',
+      fill: true, show_fan: true, stats: present.length ? { min: Math.min(...present), avg, max: Math.max(...present) } : null,
+      span_s: (temps.length - 1) * 2,
+      prefs: { theme: $('theme').value, accent: 'normal', reduced_motion: false, transparency: false, unit_symbol: f ? '°F' : '°C', unit: $('unit').value },
+    };
+  }
+  function push() {
+    const frames = { cpu: state('cpu', cpuT, cpuF), gpu: state('gpu', gpuT, gpuF), sparse: state('cpu', cpuT.slice(-4), cpuF.slice(-4)) };
+    for (const [id, s] of Object.entries(frames)) {
+      const w = $(id).contentWindow;
+      if (w?.nitro?.onFlyout) w.nitro.onFlyout(s); else return setTimeout(push, 50);
+    }
+    $('stage').style.transform = `scale(${$('scale').value})`;
+  }
+  for (const id of ['cpu', 'gpu', 'sparse']) $(id).addEventListener('load', push);
+  for (const id of ['theme', 'unit', 'scale']) $(id).addEventListener('input', push);
+  window.addEventListener('nitro:command', (e) => console.log('command', e.detail));
+</script>
+</body>
+</html>

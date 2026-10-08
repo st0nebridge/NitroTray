@@ -1,0 +1,295 @@
+<div class="chart-card">
+<div class="chart-head">
+<h2>Temperature</h2>
+<div class="legend">
+<span>
+<i style="background:#ff252d">
+</i>CPU<b data-key="cpu_temp">85 °C</b>
+</span>
+<span>
+<i style="background:#ffa53a">
+</i>GPU<b data-key="gpu_temp">82 °C</b>
+</span>
+</div>
+</div>
+<canvas width="360" height="170">
+</canvas>
+</div>
+<div class="chart-card">
+<div class="chart-head">
+<h2>Utilisation</h2>
+<div class="legend">
+<span>
+<i style="background:#ff252d">
+</i>CPU<b data-key="cpu_util">21 %</b>
+</span>
+<span>
+<i style="background:#ffa53a">
+</i>GPU<b data-key="gpu_util">93 %</b>
+</span>
+</div>
+</div>
+<canvas width="360" height="170">
+</canvas>
+</div>
+<div class="chart-card">
+<div class="chart-head">
+<h2>Fan speed</h2>
+<div class="legend">
+<span>
+<i style="background:#22d3ee">
+</i>CPU<b data-key="cpu_fan">7317 RPM</b>
+</span>
+<span>
+<i style="background:#3ddc84">
+</i>GPU<b data-key="gpu_fan">7692 RPM</b>
+</span>
+</div>
+</div>
+<canvas width="360" height="170">
+</canvas>
+</div>
+<div class="chart-card">
+<div class="chart-head">
+<h2>Clock</h2>
+<div class="legend">
+<span>
+<i style="background:#ff252d">
+</i>CPU<b data-key="cpu_clock">3947 MHz</b>
+</span>
+<span>
+<i style="background:#ffa53a">
+</i>GPU<b data-key="gpu_clock">2565 MHz</b>
+</span>
+</div>
+</div>
+<canvas width="360" height="170">
+</canvas>
+</div>
+<div class="chart-card">
+<div class="chart-head">
+<h2>GPU board power</h2>
+<div class="legend">
+<span>
+<i style="background:#ffa53a">
+</i>GPU<b data-key="gpu_power">95.5 W</b>
+</span>
+</div>
+</div>
+<canvas width="360" height="170">
+</canvas>
+</div>
+
+canvas 360x170 360x170 360x170 360x170 360x170
+getContext(2d)
+setTransform(1, 0, 0, 1, 0, 0)
+clearRect(0, 0, 360, 170)
+font = "10px Segoe UI, system-ui"
+fillStyle = "rgba(160,166,172,.9)"
+strokeStyle = "rgba(255,255,255,.08)"
+beginPath()
+moveTo(0, 4)
+lineTo(316, 4)
+stroke()
+fillText("100", 322, 7)
+beginPath()
+moveTo(0, 44.5)
+lineTo(316, 44.5)
+stroke()
+fillText("83", 322, 47.5)
+beginPath()
+moveTo(0, 85)
+lineTo(316, 85)
+stroke()
+fillText("65", 322, 88)
+beginPath()
+moveTo(0, 125.5)
+lineTo(316, 125.5)
+stroke()
+fillText("48", 322, 128.5)
+beginPath()
+moveTo(0, 166)
+lineTo(316, 166)
+stroke()
+fillText("30", 322, 169)
+strokeStyle = "#ff252d"
+lineWidth = 1.8
+beginPath()
+moveTo(312.829, 73.429)
+lineTo(313.886, 61.857)
+moveTo(316, 38.714)
+stroke()
+strokeStyle = "#ffa53a"
+lineWidth = 1.8
+beginPath()
+moveTo(312.829, 96.571)
+lineTo(313.886, 91.943)
+lineTo(314.943, 87.314)
+lineTo(316, 45.657)
+stroke()
+getContext(2d)
+setTransform(1, 0, 0, 1, 0, 0)
+clearRect(0, 0, 360, 170)
+font = "10px Segoe UI, system-ui"
+fillStyle = "rgba(160,166,172,.9)"
+strokeStyle = "rgba(255,255,255,.08)"
+beginPath()
+moveTo(0, 4)
+lineTo(316, 4)
+stroke()
+fillText("100", 322, 7)
+beginPath()
+moveTo(0, 44.5)
+lineTo(316, 44.5)
+stroke()
+fillText("75", 322, 47.5)
+beginPath()
+moveTo(0, 85)
+lineTo(316, 85)
+stroke()
+fillText("50", 322, 88)
+beginPath()
+moveTo(0, 125.5)
+lineTo(316, 125.5)
+stroke()
+fillText("25", 322, 128.5)
+beginPath()
+moveTo(0, 166)
+lineTo(316, 166)
+stroke()
+fillText("0", 322, 169)
+strokeStyle = "#ff252d"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 149.8)
+lineTo(316, 131.98)
+stroke()
+strokeStyle = "#ffa53a"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 20.2)
+lineTo(316, 15.34)
+stroke()
+getContext(2d)
+setTransform(1, 0, 0, 1, 0, 0)
+clearRect(0, 0, 360, 170)
+font = "10px Segoe UI, system-ui"
+fillStyle = "rgba(160,166,172,.9)"
+strokeStyle = "rgba(255,255,255,.08)"
+beginPath()
+moveTo(0, 4)
+lineTo(316, 4)
+stroke()
+fillText("10000", 322, 7)
+beginPath()
+moveTo(0, 44.5)
+lineTo(316, 44.5)
+stroke()
+fillText("7500", 322, 47.5)
+beginPath()
+moveTo(0, 85)
+lineTo(316, 85)
+stroke()
+fillText("5000", 322, 88)
+beginPath()
+moveTo(0, 125.5)
+lineTo(316, 125.5)
+stroke()
+fillText("2500", 322, 128.5)
+beginPath()
+moveTo(0, 166)
+lineTo(316, 166)
+stroke()
+fillText("0", 322, 169)
+strokeStyle = "#22d3ee"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 68.8)
+lineTo(316, 47.465)
+stroke()
+strokeStyle = "#3ddc84"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 52.6)
+lineTo(316, 41.39)
+stroke()
+getContext(2d)
+setTransform(1, 0, 0, 1, 0, 0)
+clearRect(0, 0, 360, 170)
+font = "10px Segoe UI, system-ui"
+fillStyle = "rgba(160,166,172,.9)"
+strokeStyle = "rgba(255,255,255,.08)"
+beginPath()
+moveTo(0, 4)
+lineTo(316, 4)
+stroke()
+fillText("5000", 322, 7)
+beginPath()
+moveTo(0, 44.5)
+lineTo(316, 44.5)
+stroke()
+fillText("3750", 322, 47.5)
+beginPath()
+moveTo(0, 85)
+lineTo(316, 85)
+stroke()
+fillText("2500", 322, 88)
+beginPath()
+moveTo(0, 125.5)
+lineTo(316, 125.5)
+stroke()
+fillText("1250", 322, 128.5)
+beginPath()
+moveTo(0, 166)
+lineTo(316, 166)
+stroke()
+fillText("0", 322, 169)
+strokeStyle = "#ff252d"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 39.64)
+lineTo(316, 38.117)
+stroke()
+strokeStyle = "#ffa53a"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 85)
+lineTo(316, 82.894)
+stroke()
+getContext(2d)
+setTransform(1, 0, 0, 1, 0, 0)
+clearRect(0, 0, 360, 170)
+font = "10px Segoe UI, system-ui"
+fillStyle = "rgba(160,166,172,.9)"
+strokeStyle = "rgba(255,255,255,.08)"
+beginPath()
+moveTo(0, 4)
+lineTo(316, 4)
+stroke()
+fillText("200.0", 322, 7)
+beginPath()
+moveTo(0, 44.5)
+lineTo(316, 44.5)
+stroke()
+fillText("150.0", 322, 47.5)
+beginPath()
+moveTo(0, 85)
+lineTo(316, 85)
+stroke()
+fillText("100.0", 322, 88)
+beginPath()
+moveTo(0, 125.5)
+lineTo(316, 125.5)
+stroke()
+fillText("50.0", 322, 128.5)
+beginPath()
+moveTo(0, 166)
+lineTo(316, 166)
+stroke()
+fillText("0.0", 322, 169)
+strokeStyle = "#ffa53a"
+lineWidth = 1.8
+beginPath()
+moveTo(314.943, 100.998)
+lineTo(316, 88.677)
+stroke()

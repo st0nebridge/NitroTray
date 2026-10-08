@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "node --test --test-timeout=10000 --test-force-exit \"tests/ui/**/*.test.mjs\""
+  },
+  "mutate": [
+    "src/ui/web/js/**/*.js"
+  ],
+  "reporters": [
+    "clear-text",
+    "progress",
+    "json"
+  ],
+  "jsonReporter": {
+    "fileName": "reports/mutation/stryker.json"
+  },
+  "coverageAnalysis": "off",
+  "concurrency": 4,
+  "timeoutMS": 20000,
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": true,
+  "ignorePatterns": [
+    "target",
+    "mutants.out",
+    "mutants.out.old",
+    "reports",
+    "docs",
+    ".archive",
+    ".claude",
+    "bin",
+    "quality",
+    "tests/unit",
+    "tests/regression",
+    "Cargo.lock",
+    "*.md"
+  ]
+}

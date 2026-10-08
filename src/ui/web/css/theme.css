@@ -1,0 +1,113 @@
+/*
+ * @module theme.css
+ * @description Design tokens sampled from the reference render, dark + light,
+ *              accent intensity and reduced-motion switches. Shared by popup and window.
+ */
+:root {
+  color-scheme: dark;
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+
+  --bg: #0d1215;
+  --bg-top: #0e1418;
+  --bg-bottom: #0c151c;
+  --surface: #0e1216;
+  --surface-2: #0d1214;
+  --seg-bg: #0e1011;
+  --seg-sel-bg: #110a0b;
+
+  --line: rgba(255, 255, 255, 0.18);
+  --line-soft: rgba(255, 255, 255, 0.13);
+  --line-card: rgba(255, 255, 255, 0.34);
+  --line-v: rgba(255, 255, 255, 0.52);
+  --line-seg: rgba(255, 255, 255, 0.10);
+
+  --text: #f4f4f4;
+  --text-2: #a9adb3;
+  --text-3: #737981;
+  --text-title: #dfe5ea;
+  --icon: #e3e6e9;
+
+  --red: #ff252d;
+  --red-strong: #ff1a1f;
+  --red-border: #e3161d;
+  --warm: #ffa53a;
+  --critical: #ff3b5c;
+  --ring-track: #242424;
+  --ring-inner: #111113;
+
+  --glow-a: 0.34;
+  --glow-inner-a: 0.26;
+  --focus: #ffffff;
+  --ease: 130ms ease-out;
+}
+
+:root[data-accent="subtle"] { --glow-a: 0.16; --glow-inner-a: 0.12; }
+:root[data-accent="vivid"] { --glow-a: 0.55; --glow-inner-a: 0.4; }
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f5f7;
+  --bg-top: #f7f8fa;
+  --bg-bottom: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --seg-bg: #f1f3f5;
+  --seg-sel-bg: #fff1f1;
+  --line: rgba(0, 0, 0, 0.14);
+  --line-soft: rgba(0, 0, 0, 0.1);
+  --line-card: rgba(0, 0, 0, 0.18);
+  --line-v: rgba(0, 0, 0, 0.28);
+  --line-seg: rgba(0, 0, 0, 0.08);
+  --text: #15181b;
+  --text-2: #50565d;
+  --text-3: #7c838b;
+  --text-title: #22272c;
+  --icon: #2b3036;
+  --ring-track: #dde1e5;
+  --ring-inner: #f6f7f9;
+  --warm: #e07a00;
+  --focus: #15181b;
+}
+
+:root[data-reduced-motion="true"] { --ease: 0ms linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ease: 0ms linear; }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:focus { outline: none; }
+button:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+svg { display: block; }
+[hidden] { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}

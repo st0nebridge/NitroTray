@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Popup preview</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0b0e0d; color: #ccc; font: 12px system-ui; }
+  .bar { padding: 6px 10px; display: flex; gap: 12px; align-items: center; }
+  .stage { display: flex; gap: 24px; padding: 12px; align-items: flex-start; transform-origin: 0 0; }
+  .frame { width: 572px; height: 440px; border-radius: 8px; overflow: hidden; outline: 1px solid #6b7780;
+           box-shadow: 0 12px 40px rgba(0,0,0,.6); position: relative; flex: none; }
+  .frame iframe { border: 0; width: 572px; height: 440px; display: block; }
+  .ref { width: 572px; height: 439px; flex: none; background: url(/docs/reference/nitrosense-compact-reference.webp) -76px -45px / 724px 543px; }
+  .overlay .ref { position: absolute; left: 12px; top: 12px; opacity: var(--o, .5); mix-blend-mode: var(--blend, normal); pointer-events: none; }
+  .overlay { position: relative; }
+  body.bare { background: #000; }
+  body.bare .bar, body.bare .ref { display: none; }
+  body.bare .stage { padding: 0; }
+  body.bare .frame { border-radius: 0; outline: 0; box-shadow: none; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <label>mode <select id="mode"><option>side</option><option>overlay</option><option>ours</option></select></label>
+  <label>state <select id="state"><option>reference</option><option>helper-missing</option></select></label>
+  <label>overlay opacity <input id="op" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+  <label><input id="diff" type="checkbox"> difference</label>
+  <label>scale <select id="scale"><option>1</option><option>2</option></select></label>
+</div>
+<div class="stage" id="stage">
+  <div class="ref" id="ref"></div>
+  <div class="frame"><iframe id="popup" src="/src/ui/web/popup.html" title="popup"></iframe></div>
+</div>
+<script type="module">
+  import { referenceState, helperMissingState } from '/tests/ui/fixtures/reference-state.js';
+  const q = new URLSearchParams(location.search);
+  const $ = (id) => document.getElementById(id);
+  const stage = $('stage');
+  const frame = $('popup');
+  for (const k of ['mode', 'state', 'scale']) if (q.get(k)) $(k).value = q.get(k);
+  if (q.has('bare')) document.body.classList.add('bare');
+  function push() {
+    const w = frame.contentWindow;
+    const s = $('state').value === 'reference' ? referenceState : helperMissingState;
+    if (w?.nitro?.onState) w.nitro.onState(structuredClone(s)); else setTimeout(push, 50);
+  }
+  function layout() {
+    const mode = $('mode').value;
+    stage.classList.toggle('overlay', mode === 'overlay');
+    $('ref').style.display = mode === 'ours' ? 'none' : '';
+    stage.style.transform = `scale(${$('scale').value})`;
+    stage.style.setProperty('--o', $('op').value);
+    stage.style.setProperty('--blend', $('diff').checked ? 'difference' : 'normal');
+    if (mode === 'overlay') $('ref').style.opacity = $('op').value;
+  }
+  frame.addEventListener('load', push);
+  for (const id of ['mode', 'state', 'op', 'diff', 'scale']) $(id).addEventListener('input', () => { layout(); push(); });
+  layout();
+  window.addEventListener('nitro:command', (e) => console.log('command', e.detail));
+</script>
+</body>
+</html>
