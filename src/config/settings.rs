@@ -163,20 +163,13 @@ impl Default for GraphIconSettings {
 #[serde(default)]
 pub struct TrayIconSettings {
     pub show_app_icon: bool,
-    /// Hovering the CPU or GPU icon shows its history flyout (in place of the plain tooltip).
-    pub hover_details: bool,
     pub cpu: GraphIconSettings,
     pub gpu: GraphIconSettings,
 }
 
 impl Default for TrayIconSettings {
     fn default() -> Self {
-        Self {
-            show_app_icon: true,
-            hover_details: true,
-            cpu: GraphIconSettings::cpu_default(),
-            gpu: GraphIconSettings::gpu_default(),
-        }
+        Self { show_app_icon: true, cpu: GraphIconSettings::cpu_default(), gpu: GraphIconSettings::gpu_default() }
     }
 }
 

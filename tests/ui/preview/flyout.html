@@ -22,6 +22,7 @@
 <div class="bar">
   <label>theme <select id="theme"><option>dark</option><option>light</option></select></label>
   <label>unit <select id="unit"><option>celsius</option><option>fahrenheit</option></select></label>
+  <label>GPU tensor <select id="unlock"><option>unlocked</option><option>locked</option><option>lost</option><option>checking</option><option>unknown</option><option>none</option></select></label>
   <label>scale <select id="scale"><option>1</option><option>2</option></select></label>
 </div>
 <div class="stage" id="stage">
@@ -30,11 +31,12 @@
   <div class="frame"><iframe id="sparse" src="/src/ui/web/flyout.html" title="Just started"></iframe></div>
 </div>
 <script type="module">
+  import { UNLOCK_VIEWS } from '/tests/ui/fixtures/unlock-views.js';
   // Shapes like the measured AN515-58 readings: CPU package spiking 60↔92 °C under bursty load,
   // GPU steady in the 50s; one outage gap. Deterministic so screenshots are comparable.
   const $ = (id) => document.getElementById(id);
   const q = new URLSearchParams(location.search);
-  for (const k of ['theme', 'unit', 'scale']) if (q.get(k)) $(k).value = q.get(k);
+  for (const k of ['theme', 'unit', 'scale', 'unlock']) if (q.get(k)) $(k).value = q.get(k);
   // ?bare&only=cpu|gpu|sparse: one flyout edge to edge, for bin/ui-snap.ps1.
   if (q.has('bare')) document.body.classList.add('bare');
   if (q.get('only')) $(q.get('only'))?.parentElement.classList.add('only');
@@ -64,6 +66,7 @@
       temp_color: kind === 'cpu' ? '#FF2A2A' : '#FFA53A', fan_color: kind === 'cpu' ? '#22D3EE' : '#3DDC84',
       fill: true, show_fan: true, stats: present.length ? { min: Math.min(...present), avg, max: Math.max(...present) } : null,
       span_s: (temps.length - 1) * 2,
+      unlock: kind === 'gpu' ? UNLOCK_VIEWS[$('unlock').value] : null,
       prefs: { theme: $('theme').value, accent: 'normal', reduced_motion: false, transparency: false, unit_symbol: f ? '°F' : '°C', unit: $('unit').value },
     };
   }
@@ -76,7 +79,7 @@
     $('stage').style.transform = `scale(${$('scale').value})`;
   }
   for (const id of ['cpu', 'gpu', 'sparse']) $(id).addEventListener('load', push);
-  for (const id of ['theme', 'unit', 'scale']) $(id).addEventListener('input', push);
+  for (const id of ['theme', 'unit', 'scale', 'unlock']) $(id).addEventListener('input', push);
   window.addEventListener('nitro:command', (e) => console.log('command', e.detail));
 </script>
 </body>

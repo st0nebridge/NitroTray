@@ -158,3 +158,46 @@ test('header drag: each gesture checked on its own', () => {
   down($('.title'));
   assert.deepEqual(s.calls, [{ cmd: 'drag_window' }]);
 });
+
+const unlockView = (over = {}) => ({
+  state: 'locked', badge: 'Locked', detail: 'FP32-accumulate tensor rate is at half rate (ratio 0.50), checked 12 s ago.',
+  summary: 'ratio 0.50, checked 12 s ago', ratio: 0.5, age_s: 12, boot: 'Unlocker run RUN0028: unlocked at boot', ...over,
+});
+
+test('the tensor lock badge is hidden until there is something to claim', () => {
+  const { $ } = setup();
+  assert.equal($('#tensor').hidden, true, 'the reference state has no unlock view');
+  const { $: $2, view } = setup({ ...referenceState, unlock: unlockView({ state: 'unknown', badge: '', detail: 'Not checked yet.', boot: null }) });
+  assert.equal($2('#tensor').hidden, true);
+  view.render({ ...referenceState, unlock: null });
+  assert.equal($2('#tensor').hidden, true);
+});
+
+test('the tensor lock badge shows the state in the GPU block only', () => {
+  for (const [state, badge] of [['unlocked', 'Unlocked'], ['locked', 'Locked'], ['lost', 'Unlock lost'], ['checking', 'Checking']]) {
+    const { $, doc } = setup({ ...referenceState, unlock: unlockView({ state, badge }) });
+    const pill = $('#proc-gpu #tensor');
+    assert.equal(pill.hidden, false, state);
+    assert.equal(pill.dataset.state, state);
+    assert.equal(pill.querySelector('.tensor-text').textContent, badge);
+    assert.equal(doc.querySelectorAll('#tensor').length, 1);
+    assert.equal($('#proc-cpu #tensor'), null);
+  }
+});
+
+test('the tensor lock badge explains itself in its tooltip and name', () => {
+  const { $ } = setup({ ...referenceState, unlock: unlockView() });
+  const pill = $('#tensor');
+  assert.match(pill.title, /half rate \(ratio 0\.50\)/);
+  assert.match(pill.title, /Unlocker run RUN0028: unlocked at boot/);
+  assert.match(pill.title, /Click to check again/);
+  assert.match(pill.getAttribute('aria-label'), /^Tensor cores: Locked\./);
+  const { $: $2 } = setup({ ...referenceState, unlock: unlockView({ boot: null }) });
+  assert.doesNotMatch($2('#tensor').title, /Unlocker run/);
+});
+
+test('clicking the tensor lock badge asks for a new check', () => {
+  const { $, s } = setup({ ...referenceState, unlock: unlockView() });
+  click($('#tensor'));
+  assert.deepEqual(s.calls.at(-1), { cmd: 'recheck_tensor' });
+});

@@ -3,18 +3,20 @@
 //! into UI state and side-effect requests. Pure — the runtime performs the effects.
 //!
 //! @input  `TelemetryUpdate`, `UiCommand`, `MenuAction`, control results, a millisecond clock.
-//! @output `UiState` for the webviews, `Vec<Effect>` for the runtime.
-//! @dependencies acer, config, controls, ipc::protocol, telemetry::{snapshot, fan}, tray::menu, ui::bridge
+//! @output `Vec<Effect>` for the runtime; the state `app::ui_state` turns into `UiState` for the webviews.
+//! @dependencies acer, config, controls, ipc::protocol, telemetry::{snapshot, fan}, tray::menu, ui::bridge, unlock::tracker
 use crate::acer::Capabilities;
-use crate::config::settings::{Settings, ThemeChoice};
+use crate::config::settings::Settings;
 use crate::controls::{FanCurveProfile, FanMode, PerformanceMode};
 use crate::ipc::protocol::ProviderStatus;
-use crate::telemetry::fan::{ring_pct, Calibrator};
+use crate::telemetry::fan::Calibrator;
 use crate::telemetry::snapshot::{FanTelemetry, SystemSnapshot};
 use crate::tray::menu::MenuAction;
-use crate::ui::bridge::{
-    FanRowState, Notice, NoticeKind, Page, PendingAction, UiCommand, UiFan, UiPrefs, UiProcessor, UiState,
-};
+use crate::ui::bridge::{Notice, NoticeKind, Page, PendingAction, UiCommand};
+use crate::unlock::boot_log::BootReport;
+use crate::unlock::state::TensorRates;
+use crate::unlock::tracker::UnlockTracker;
+use crate::unlock::view::UnlockView;
 
 pub const ERROR_NOTICE_MS: u64 = 6000;
 pub const INFO_NOTICE_MS: u64 = 3500;
@@ -50,6 +52,8 @@ pub enum Effect {
     PinTrayIcons,
     SendWindowData,
     RefreshModes,
+    /// Measure the GPU's tensor-core rate again, even if the last reading is recent.
+    RecheckTensor,
     Exit,
 }
 
@@ -65,17 +69,18 @@ pub struct TelemetryUpdate {
 
 pub struct AppModel {
     pub settings: Settings,
-    snapshot: SystemSnapshot,
-    caps: Capabilities,
-    status: ProviderStatus,
-    provider: String,
-    model: String,
-    pending: Option<PendingAction>,
-    notice: Option<(Notice, u64)>,
+    pub(super) snapshot: SystemSnapshot,
+    pub(super) caps: Capabilities,
+    pub(super) status: ProviderStatus,
+    pub(super) provider: String,
+    pub(super) model: String,
+    pub(super) pending: Option<PendingAction>,
+    pub(super) notice: Option<(Notice, u64)>,
     calibrator: Calibrator,
     autostart: bool,
-    light_system_theme: bool,
+    pub(super) light_system_theme: bool,
     reapplied: bool,
+    unlock: UnlockTracker,
 }
 
 pub fn connection_text(status: ProviderStatus) -> &'static str {
@@ -105,6 +110,7 @@ impl AppModel {
             autostart,
             light_system_theme,
             reapplied: false,
+            unlock: UnlockTracker::default(),
         }
     }
 
@@ -130,6 +136,33 @@ impl AppModel {
 
     pub fn set_light_system_theme(&mut self, light: bool) {
         self.light_system_theme = light;
+    }
+
+    pub fn set_session_start(&mut self, unix: Option<u64>) {
+        self.unlock.set_session_start(unix);
+    }
+
+    /// Whether a tensor-core check should start: never with GPU driver telemetry off (the setting also
+    /// forbids waking the GPU for it), never while one runs, otherwise when asked or when the last is stale.
+    pub fn tensor_due(&self, now: u64, force: bool) -> bool {
+        self.settings.telemetry.gpu_driver_queries && self.unlock.due(now, force)
+    }
+
+    pub fn begin_tensor(&mut self) {
+        self.unlock.begin();
+    }
+
+    pub fn on_tensor(
+        &mut self,
+        rates: Result<TensorRates, String>,
+        boot: Result<Option<BootReport>, String>,
+        now: u64,
+    ) {
+        self.unlock.finish(rates, boot, now);
+    }
+
+    pub fn unlock_view(&self, now: u64) -> UnlockView {
+        self.unlock.view(self.settings.telemetry.gpu_driver_queries, now)
     }
 
     fn connected(&self) -> bool {
@@ -317,6 +350,7 @@ impl AppModel {
             UiCommand::ExportDiagnostics => vec![Effect::ExportDiagnostics],
             UiCommand::InstallHelper => vec![Effect::InstallHelper],
             UiCommand::PinTrayIcons => vec![Effect::PinTrayIcons],
+            UiCommand::RecheckTensor => vec![Effect::RecheckTensor],
         }
     }
 
@@ -332,87 +366,6 @@ impl AppModel {
             MenuAction::OpenSettings => vec![Effect::OpenWindow(Page::Settings)],
             MenuAction::ToggleAutostart => vec![Effect::SetAutostart(!self.autostart)],
             MenuAction::Exit => vec![Effect::Exit],
-        }
-    }
-
-    fn processor(
-        &self,
-        t: &crate::telemetry::snapshot::CpuTelemetry,
-        thresholds: crate::telemetry::thresholds::TempThresholds,
-    ) -> UiProcessor {
-        let unit = self.settings.telemetry.temperature_unit;
-        UiProcessor {
-            temp: t.temperature_c.map(|c| unit.convert(c)),
-            level: Some(thresholds.classify(t.temperature_c)),
-            util: t.utilisation_pct,
-            mhz: t.frequency_mhz,
-        }
-    }
-
-    fn fan_row(&self, fan: Option<FanTelemetry>, present: bool, calibrated: Option<u32>) -> UiFan {
-        if !self.settings.telemetry.fan_telemetry {
-            return UiFan { state: FanRowState::Disabled, rpm: None, ring_pct: None };
-        }
-        match fan.filter(|f| present && f.rpm.is_some()) {
-            Some(f) => UiFan { state: FanRowState::Ok, rpm: f.rpm, ring_pct: ring_pct(&f, calibrated) },
-            None => UiFan { state: FanRowState::Unavailable, rpm: None, ring_pct: None },
-        }
-    }
-
-    pub fn resolved_theme(&self) -> &'static str {
-        match self.settings.appearance.theme {
-            ThemeChoice::Dark => "dark",
-            ThemeChoice::Light => "light",
-            ThemeChoice::MatchWindows if self.light_system_theme => "light",
-            ThemeChoice::MatchWindows => "dark",
-        }
-    }
-
-    /// Theme, accent, motion and unit preferences shared by every page.
-    pub fn prefs(&self) -> UiPrefs {
-        let a = &self.settings.appearance;
-        let unit = self.settings.telemetry.temperature_unit;
-        UiPrefs {
-            theme: self.resolved_theme(),
-            accent: a.accent_intensity,
-            reduced_motion: a.reduced_motion,
-            transparency: a.transparency,
-            unit_symbol: unit.symbol(),
-            unit,
-        }
-    }
-
-    pub fn ui_state(&mut self, now: u64) -> UiState {
-        if self.notice.as_ref().is_some_and(|(_, until)| now >= *until) {
-            self.notice = None;
-        }
-        let s = &self.snapshot;
-        let t = &self.settings.telemetry;
-        let gpu_as_cpu = crate::telemetry::snapshot::CpuTelemetry {
-            temperature_c: s.gpu.temperature_c,
-            utilisation_pct: s.gpu.utilisation_pct,
-            frequency_mhz: s.gpu.frequency_mhz,
-        };
-        let cal = self.settings.fan.calibration;
-        UiState {
-            cpu: self.processor(&s.cpu, t.cpu_thresholds),
-            gpu: self.processor(&gpu_as_cpu, t.gpu_thresholds),
-            cpu_fan: self.fan_row(s.cpu_fan, self.caps.cpu_fan, cal.cpu_max_rpm),
-            gpu_fan: self.fan_row(s.gpu_fan, self.caps.gpu_fan, cal.gpu_max_rpm),
-            fan_mode: s.fan_mode,
-            performance_mode: s.performance_mode,
-            performance_other: s
-                .performance_raw
-                .map(|r| crate::controls::performance_mode::firmware_profile_name(r).to_string()),
-            capabilities: self.caps,
-            connection: self.status,
-            connection_text: connection_text(self.status).into(),
-            provider: self.provider.clone(),
-            model: self.model.clone(),
-            has_custom_profile: self.settings.fan.custom_profile.is_some(),
-            pending: self.pending.clone(),
-            notice: self.notice.as_ref().map(|(n, _)| n.clone()),
-            prefs: self.prefs(),
         }
     }
 }

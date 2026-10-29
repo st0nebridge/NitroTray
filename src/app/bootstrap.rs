@@ -17,6 +17,7 @@ use windows::Win32::UI::WindowsAndMessaging::{AllowSetForegroundWindow, ASFW_ANY
 use crate::app::events::{Options, UserEvent};
 use crate::app::model::ControlRequest;
 use crate::app::runtime::Runtime;
+use crate::app::tensor::{run_tensor, TensorMsg};
 use crate::app::worker::{self, TelemetryConfig, WorkerMsg};
 use crate::config::{store, ConfigStore, Settings};
 use crate::ipc::client::{HelperClient, PipeTransport};
@@ -29,7 +30,7 @@ fn spawn_workers(
     proxy: &EventLoopProxy<UserEvent>,
     settings: &Settings,
     started: Instant,
-) -> (Sender<WorkerMsg>, Sender<ControlRequest>) {
+) -> (Sender<WorkerMsg>, Sender<ControlRequest>, Sender<TensorMsg>) {
     let (wtx, wrx) = mpsc::channel();
     let cfg = TelemetryConfig::from_settings(settings);
     let p = proxy.clone();
@@ -55,7 +56,20 @@ fn spawn_workers(
             let _ = p.send_event(UserEvent::ControlDone(req, result));
         });
     });
-    (wtx, ctx)
+    let (ttx, trx) = mpsc::channel::<TensorMsg>();
+    let p = proxy.clone();
+    std::thread::spawn(move || {
+        let client = HelperClient::new(PipeTransport::from_env());
+        run_tensor(
+            &trx,
+            crate::unlock::cuda::measure,
+            || client.unlock_boot().map_err(|e| e.user_message()),
+            move |result| {
+                let _ = p.send_event(UserEvent::Tensor(Box::new(result)));
+            },
+        );
+    });
+    (wtx, ctx, ttx)
 }
 
 fn forward_callbacks(proxy: &EventLoopProxy<UserEvent>, show_event: String, exit_event: String) {
@@ -110,8 +124,8 @@ pub fn run(opts: Options) -> Result<(), String> {
     let proxy = event_loop.create_proxy();
     forward_callbacks(&proxy, show_event, exit_event);
     let started = Instant::now();
-    let (worker_tx, control_tx) = spawn_workers(&proxy, &settings, started);
-    let mut rt = Runtime::new(settings, store, proxy, worker_tx, control_tx, started, opts, warning);
+    let (worker_tx, control_tx, tensor_tx) = spawn_workers(&proxy, &settings, started);
+    let mut rt = Runtime::new(settings, store, proxy, worker_tx, control_tx, tensor_tx, started, opts, warning);
     event_loop.run(move |event, target, control_flow| {
         let _keep = &instance;
         rt.handle(event, target, control_flow);

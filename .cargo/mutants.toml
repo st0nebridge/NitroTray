@@ -7,10 +7,13 @@
 # 2. `supported_sensors_input -> 0`: the function already returns the constant 0x0000.
 # 3. `Capabilities::none -> Default::default()`: `none()` *is* `Self::default()`.
 # 4. `ramp` `<` -> `<=`: when wanted == previous both branches return that same value.
+# 5. `TensorRates::ratio` `acc16 > 0.0` -> `>=`: with a zero reference the division is infinite or NaN, which the
+#    `is_finite` check on the same line rejects, so the result is `None` either way.
 exclude_re = [
     'src/acer/acpi\.rs:\d+:\d+: replace \| with \^ in (sensor_reading_input|fan_speed_set_input|misc_set_input|fan_behavior_set_input)$',
     'src/acer/acpi\.rs:\d+:\d+: replace \| with \^$',
     'replace supported_sensors_input -> u32 with 0$',
     'replace Capabilities::none -> Self with Default::default\(\)$',
     'src/service/curve\.rs:\d+:\d+: replace < with <= in ramp$',
+    'src/unlock/state\.rs:\d+:\d+: replace > with >= in TensorRates::ratio$',
 ]

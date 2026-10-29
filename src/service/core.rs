@@ -3,7 +3,7 @@
 //!
 //! @input  Validated `Request`s (or raw lines), periodic `tick()` calls, `shutdown()`.
 //! @output `Response`s; firmware changes verified by read-back; fail-safe restoration of Auto.
-//! @dependencies acer, controls, ipc::protocol, service::curve, meta
+//! @dependencies acer, controls, ipc::protocol, service::{curve, unlock_log}, meta
 //!
 //! Crash safety: while a custom curve is active a marker file exists. If the service starts
 //! and finds the marker, the previous instance died mid-curve, so Auto is restored.
@@ -14,6 +14,7 @@ use crate::acer::Capabilities;
 use crate::controls::{FanCurveProfile, FanMode, PerformanceMode};
 use crate::ipc::protocol::{self, CapabilitiesReport, ErrorCode, ProviderStatus, Request, Response};
 use crate::service::curve::{CurveController, TickOutcome};
+use crate::service::unlock_log::UnlockLogSource;
 
 pub fn error_code(e: &AcerError) -> ErrorCode {
     match e {
@@ -45,6 +46,7 @@ pub struct ServiceCore<B: HardwareBackend> {
     curve: Option<CurveController>,
     marker: Option<PathBuf>,
     last_event: Option<String>,
+    unlock_log: Option<Box<dyn UnlockLogSource>>,
 }
 
 impl<B: HardwareBackend> ServiceCore<B> {
@@ -54,9 +56,24 @@ impl<B: HardwareBackend> ServiceCore<B> {
         } else {
             Capabilities::none()
         };
-        let mut core = Self { backend, caps, status, model: model.into(), curve: None, marker, last_event: None };
+        let mut core = Self {
+            backend,
+            caps,
+            status,
+            model: model.into(),
+            curve: None,
+            marker,
+            last_event: None,
+            unlock_log: None,
+        };
         core.recover_after_crash();
         core
+    }
+
+    /// Where `get_unlock_boot` reads the UEFI unlocker's newest boot report from.
+    pub fn with_unlock_log(mut self, source: Box<dyn UnlockLogSource>) -> Self {
+        self.unlock_log = Some(source);
+        self
     }
 
     fn recover_after_crash(&mut self) {
@@ -131,11 +148,15 @@ impl<B: HardwareBackend> ServiceCore<B> {
                 ..Response::ok()
             };
         }
+        // A file on the EFI system partition, not firmware of this laptop: it does not wait on the Acer interface.
+        if let Request::GetUnlockBoot = req {
+            return self.unlock_boot();
+        }
         if let Some(r) = self.unavailable() {
             return r;
         }
         match req {
-            Request::GetCapabilities => unreachable!("handled above"),
+            Request::GetCapabilities | Request::GetUnlockBoot => unreachable!("handled above"),
             Request::GetSensors => match self.backend.sensors() {
                 Ok(s) => Response { sensors: Some(s), ..Response::ok() },
                 Err(e) => fail(&e),
@@ -150,6 +171,16 @@ impl<B: HardwareBackend> ServiceCore<B> {
             },
             Request::SetFanMode { mode, curve } => self.set_fan_mode(mode, curve),
             Request::SetPerformanceMode { mode } => self.set_performance(mode),
+        }
+    }
+
+    fn unlock_boot(&mut self) -> Response {
+        let Some(source) = self.unlock_log.as_mut() else {
+            return Response::fail(ErrorCode::Unavailable, "the unlocker's boot log is not available here");
+        };
+        match source.latest() {
+            Ok(report) => Response { unlock_boot: report, ..Response::ok() },
+            Err(e) => Response::fail(ErrorCode::Unavailable, e),
         }
     }
 

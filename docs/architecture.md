@@ -10,12 +10,15 @@ NitroTray.exe (user)                                    NitroTrayService.exe (Lo
 ├── app::effects     OS side effects                    ├── service::core     typed request dispatch,
 ├── app::model       pure state machine (tested)        │                     read-back verification
 ├── app::worker      telemetry poller, control queue    ├── service::curve    fail-closed fan-curve loop
+├── app::tensor      tensor-check thread                ├── service::{esp, unlock_log}  unlocker boot log
 ├── app::tray_host   app icon + CPU/GPU graph icons     └── acer::{gaming, wmi, acpi, discovery}
 ├── telemetry        PDH (CPU), NVML (GPU, lazy),                         │
 │                    helper readings, scheduler, history                  ▼
-├── ui               bridge (contract), assets (CSP),         root\WMI  AcerGamingFunction
+├── unlock           tensor probe (PTX + CUDA driver),        root\WMI  AcerGamingFunction
+│                    boot-log parser, verdict, view
+├── ui               bridge (contract), assets (CSP),
 │                    webview (WebView2 surfaces)
-├── tray             positioning, raster, graph_icon, app_icon, menu
+├── tray             positioning, clicks, raster, graph_icon, app_icon, menu
 ├── config           settings (sanitised), hotkey, store
 └── ipc::client ──── \\.\pipe\NitroTray (JSON lines, ACL'd, session-0 check) ────┘
 ```
@@ -40,9 +43,11 @@ NitroTray.exe (user)                                    NitroTrayService.exe (Lo
   but not create instances; `PIPE_REJECT_REMOTE_CLIENTS`; first instance is exclusive.
 - Clients connect with `SECURITY_IDENTIFICATION` (a squatting server cannot impersonate them) and refuse
   servers outside session 0 unless `NITROTRAY_DEV_HELPER=1` (development console helper).
-- Operations: `get_capabilities`, `get_sensors`, `get_fan_state`, `get_performance_mode`,
+- Operations: `get_capabilities`, `get_sensors`, `get_fan_state`, `get_performance_mode`, `get_unlock_boot`,
   `set_fan_mode {mode, curve?}`, `set_performance_mode {mode}`. Unknown ops/fields are rejected; there is
-  no generic read/write, IOCTL or registry operation.
+  no generic read/write, IOCTL or registry operation. `get_unlock_boot` takes no argument: it reads the newest
+  `RUN<n>.TXT` of the UEFI tensor unlocker from the one fixed directory of the EFI system partition
+  (D-20261029-002) and returns a typed summary, never the file.
 - Every write is verified by reading the firmware back; a mismatch is reported as `firmware_rejected`.
 
 ## Fan-curve safety
@@ -74,17 +79,53 @@ scales it per monitor DPI. DWM supplies rounded corners, border and shadow (no n
 Borderless windows are created hidden with their frame settled (`ui::webview::tool_window`): until the
 first `WM_NCCALCSIZE`, tao measures a caption that is not there, and the first open came out 30 px too tall.
 
-## Hover flyout
+## Tray icon gestures and the details popup
 
-Resting on the CPU or GPU graph icon (`tray::hover`: 350 ms, hide on leave/click, instant switch between
-icons) shows `flyout.html` (340 × 214 DIP) above it, built once at start-up and kept hidden like the popup.
+Hovering a graph icon shows Windows' plain tooltip (`app::tray_host` always sets it). The left button is
+interpreted by `tray::clicks` (D-20261029-001): a single click on the CPU or GPU icon toggles that icon's
+details popup, a single click on the app icon toggles the main popup, and a double click opens the main
+popup from any icon. Windows reports a double click as press, release, double-click, release, so the first
+release has already opened the details popup (instantly, with no wait for a possible second click) and the
+double click swaps it for the main popup; the release that ends the double click is ignored, and every
+press clears that flag so a release that never arrived cannot swallow a later click. With "Open popup on
+tray click" off, the left button opens the tray menu and none of this runs.
+
+The details popup is `flyout.html` (340 × 214 DIP), built once at start-up and kept hidden like the popup.
 `ui::flyout` turns the 300-sample monitoring history into that icon's series in the user's unit, with the
-icon's colours, range and fan scale. The window has `WS_EX_NOACTIVATE` and is shown with
-`SW_SHOWNOACTIVATE`, so the foreground app keeps focus; its page may only send `ready`. It reads only the
-embedded-controller values the graph icons already poll, so it never wakes the discrete GPU (D-20261001-002).
+icon's colours, range and fan scale. It is a focused window like the main popup, so Escape (the page sends
+`close_popup`; it may send nothing else besides `ready`) and, with "close on focus loss", clicking elsewhere
+close it; a click on the icon that closed it by taking focus counts as the close, not a reopen
+(`TOGGLE_GRACE`). Only one of the two popups is shown at a time. It reads only the embedded-controller
+values the graph icons already poll and does not count as a visible surface for the telemetry worker, so
+it never wakes the discrete GPU (D-20261001-002, D-20260930-010).
 
-Webviews are created only while none of ours is on screen (D-20261001-003): the popup and flyout during
-start-up before the popup is first shown; a later flyout (hover details turned on) or popup rebuild
-(transparency changed) waits until popup, flyout and window are all hidden. Creating a controller while
-another was visible never completed and left the event loop inside wry's wait. `tests/live/webviews.ps1`
-checks both paths against a real build.
+Webviews are created only while none of ours is on screen (D-20261001-003): the popup and details popup
+during start-up before the popup is first shown; a later details popup (a graph icon turned on) or popup
+rebuild (transparency changed) waits until popup, details popup and window are all hidden. Creating a
+controller while another was visible never completed and left the event loop inside wry's wait.
+`tests/live/webviews.ps1` checks both paths and the click gestures against a real build.
+
+## Tensor-core lock state
+
+GeForce parts run FP16 multiply-accumulate with FP32 accumulate at half rate unless the throttle has been lifted
+(D-20261029-003). Two sources feed one verdict (`unlock::view`):
+
+- **Live probe** (`unlock::{ptx, cuda}`, run by `app::tensor` on its own thread). `unlock::ptx` generates a loop
+  of eight independent `mma.sync.m16n8k16` chains in PTX, once with FP32 and once with FP16 accumulate; the
+  driver JIT-compiles it for the installed GPU through `nvcuda.dll`, so no toolkit is needed. `unlock::cuda`
+  creates a context, times each kernel (best of three, CUDA events), and destroys everything before returning.
+  The ratio of the two rates is about 0.50 throttled and about 1.0 lifted; above 0.75 is unlocked
+  (`unlock::state`). It runs when the popup opens, when the GPU icon is clicked, and on a click on the badge,
+  never twice at once (`unlock::tracker`: a reading is reused for 60 s, a failure is not retried sooner), and
+  never with *GPU driver telemetry* off.
+- **Boot log** (`service::{esp, unlock_log}`, the helper's `get_unlock_boot`). The helper finds the FAT volume that
+  holds the unlocker's log directory by enumerating volume GUID paths, so the EFI system partition is read where
+  it is, unmounted and read-only; the highest-numbered `RUN<n>.TXT` is parsed (`unlock::boot_log`) down to its
+  status, build and write time. A log is "from this session" when it was written no more than 15 minutes before
+  the session started (`platform::windows::session_start_unix`: the unlocker runs before Windows starts, and a
+  Fast Startup or hibernate boot writes its log after the original boot).
+
+`unlock::view` turns both into a badge for the popup (`#tensor`, in the GPU block's free strip above the
+temperature, clickable) and a row for the GPU details popup. With a half-rate reading and a log of this session
+that says "unlocked" it says *Unlock lost*. With no reading it says nothing: it never claims "locked" without a
+measurement.

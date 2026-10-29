@@ -34,6 +34,19 @@
     <span class="axis axis-bottom num" id="axis-bottom">30°C</span>
     <span class="axis axis-fan num" id="axis-fan">4840 RPM</span>
   </div>
+  <div class="fly-tensor" id="fly-tensor" hidden="">
+    <div class="tensor-l1">
+<i class="tensor-dot" aria-hidden="true">
+</i>
+<span class="tensor-label">Tensor cores</span>
+<b id="tensor-badge">
+</b>
+<span id="tensor-sum">
+</span>
+</div>
+    <div class="tensor-l2" id="tensor-line2">
+</div>
+  </div>
   <footer class="fly-ftr">
     <span class="fly-stats num" id="fly-stats">Min 60° · Avg 77° · Max 92°</span>
     <span class="fly-legend">

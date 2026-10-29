@@ -169,6 +169,17 @@ pub fn machine_info() -> MachineInfo {
     }
 }
 
+/// When this Windows session started, seconds since the Unix epoch: now minus the tick count, which keeps
+/// running through sleep. After Fast Startup or hibernate it is the original boot, so a log the unlocker wrote
+/// at this power-on is newer than it.
+pub fn session_start_unix() -> Option<u64> {
+    use windows::Win32::System::SystemInformation::GetTickCount64;
+    // SAFETY: a plain query of the tick count.
+    let up_s = unsafe { GetTickCount64() } / 1000;
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+    now.checked_sub(up_s)
+}
+
 /// True when Windows apps are set to the light theme.
 pub fn apps_use_light_theme() -> bool {
     read_dword(Hive::CurrentUser, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme")

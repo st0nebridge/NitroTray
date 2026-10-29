@@ -3,14 +3,16 @@
 //!
 //! @input  One newline-terminated JSON request per connection (≤ `MAX_MESSAGE_BYTES`).
 //! @output Parsed + semantically validated `Request`, or an `ErrorInfo`; serialised `Response` lines.
-//! @dependencies serde, serde_json, acer (Capabilities, state types), controls
+//! @dependencies serde, serde_json, acer (Capabilities, state types), controls, unlock (BootReport)
 //!
 //! Unknown ops, unknown fields, oversize messages, and invalid curves are all rejected before
-//! any hardware is touched. There is deliberately no generic read/write operation.
+//! any hardware is touched. There is deliberately no generic read/write operation: the one read of
+//! a file, `get_unlock_boot`, names no path and returns a typed report, never the file.
 use serde::{Deserialize, Serialize};
 
 use crate::acer::{Capabilities, FanState, PerformanceState, SensorReadings};
 use crate::controls::{FanCurveProfile, FanMode, PerformanceMode};
+use crate::unlock::boot_log::BootReport;
 
 pub const MAX_MESSAGE_BYTES: usize = 8192;
 
@@ -21,6 +23,8 @@ pub enum Request {
     GetSensors,
     GetFanState,
     GetPerformanceMode,
+    /// The newest report of the UEFI tensor unlocker's boot log (read-only, fixed location, typed result).
+    GetUnlockBoot,
     SetFanMode {
         mode: FanMode,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -89,6 +93,8 @@ pub struct Response {
     pub performance: Option<PerformanceState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effective_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unlock_boot: Option<BootReport>,
 }
 
 impl Response {

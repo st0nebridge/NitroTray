@@ -88,3 +88,31 @@ fn malformed_or_incomplete_replies_are_protocol_errors() {
     let bare_fail = HelperClient::new(Fixed(Ok("{\"ok\":false}".into())));
     assert!(matches!(bare_fail.sensors(), Err(ClientError::Remote(ErrorInfo { code: ErrorCode::Internal, .. }))));
 }
+
+#[test]
+fn the_unlock_boot_report_comes_back_typed() {
+    use nitrotray::service::unlock_log::StaticUnlockLog;
+    use nitrotray::unlock::boot_log::{BootReport, BootStatus};
+    let report =
+        BootReport { run: "RUN0007".into(), status: BootStatus::DryRun, build: "dryrun".into(), written_unix: None };
+    let core = ServiceCore::new(FakeBackend::default(), "m", ProviderStatus::Connected, None)
+        .with_unlock_log(Box::new(StaticUnlockLog(Some(report.clone()))));
+    let c = HelperClient::new(CoreTransport(Mutex::new(core)));
+    assert_eq!(c.unlock_boot().unwrap(), Some(report));
+    let none = ServiceCore::new(FakeBackend::default(), "m", ProviderStatus::Connected, None)
+        .with_unlock_log(Box::new(StaticUnlockLog(None)));
+    assert_eq!(HelperClient::new(CoreTransport(Mutex::new(none))).unlock_boot().unwrap(), None);
+}
+
+#[test]
+fn an_older_helper_that_does_not_know_the_request_is_a_remote_error() {
+    let old = HelperClient::new(Fixed(Ok(
+        r#"{"ok":false,"error":{"code":"invalid_request","message":"malformed request: unknown variant"}}"#.to_string()
+            + "
+",
+    )));
+    match old.unlock_boot().unwrap_err() {
+        ClientError::Remote(e) => assert_eq!(e.code, ErrorCode::InvalidRequest),
+        other => panic!("{other:?}"),
+    }
+}

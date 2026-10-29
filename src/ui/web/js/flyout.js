@@ -1,9 +1,10 @@
 /**
  * @module flyout
- * @description Hover flyout entry point: exposes `window.nitro.onFlyout` and announces readiness.
+ * @description Details popup entry point (opened by a click on a CPU or GPU tray icon): exposes
+ * `window.nitro.onFlyout`, announces readiness and closes on Escape.
  *
  * @input  `FlyoutState` pushed by the host via `window.nitro.onFlyout(state)`.
- * @output A `ready` command; nothing else (the flyout is display-only and never takes focus).
+ * @output `ready` and, on Escape, `close_popup`; nothing else (the popup is display-only).
  * @dependencies bridge, flyout-view
  */
 import { applyPrefs, expose, send } from './bridge.js';
@@ -18,5 +19,11 @@ expose({
   },
 });
 
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    send({ cmd: 'close_popup' });
+  }
+});
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 send({ cmd: 'ready' });

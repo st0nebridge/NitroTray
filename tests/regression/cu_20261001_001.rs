@@ -6,10 +6,29 @@ use tao::dpi::PhysicalPosition;
 use tao::event_loop::EventLoopBuilder;
 use tao::platform::windows::{EventLoopBuilderExtWindows, WindowExtWindows};
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::UI::WindowsAndMessaging::GetClientRect;
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetClientRect, SetWindowPos, ShowWindow, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_HIDE,
+    SW_SHOWNOACTIVATE,
+};
 
 use nitrotray::ui::flyout::FLYOUT_SIZE;
-use nitrotray::ui::webview::{hide_window, show_inactive, tool_window, POPUP_SIZE};
+use nitrotray::ui::webview::{tool_window, POPUP_SIZE};
+
+/// Shows a window on top without activating it, so the test never takes focus from the desktop.
+fn show_inactive(hwnd: HWND) {
+    // SAFETY: visibility and z-order of a window this test owns.
+    unsafe {
+        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+}
+
+fn hide_window(hwnd: HWND) {
+    // SAFETY: hides a window this test owns.
+    unsafe {
+        let _ = ShowWindow(hwnd, SW_HIDE);
+    }
+}
 
 #[test]
 fn first_show_has_the_requested_client_size() {

@@ -2,8 +2,7 @@
 //! @description Owns the notification-area icons (app icon + CPU/GPU graph icons) and the context menu.
 //!
 //! @input  Settings (which icons, colours, ranges), snapshots, menu model.
-//! @output Live tray icons with graph images and tooltips (none on the graph icons while their hover
-//! flyout replaces it); menu check/enabled states.
+//! @output Live tray icons with graph images and tooltips; menu check/enabled states.
 //! @dependencies tray-icon (muda), tray::{app_icon, graph_icon, menu}, telemetry::history, config
 use tray_icon::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
@@ -166,7 +165,6 @@ impl TrayHost {
     pub fn refresh(&self, settings: &Settings, snap: Option<&SystemSnapshot>) {
         let unit: TemperatureUnit = settings.telemetry.temperature_unit;
         let rpm = |f: Option<crate::telemetry::snapshot::FanTelemetry>| f.and_then(|f| f.rpm);
-        let plain_tips = !settings.tray_icons.hover_details;
         if let Some(tray) = &self.cpu {
             let _ = tray.set_icon(icon(self.graph(&settings.tray_icons.cpu, &self.cpu_series), self.size));
             let tip = graph_icon::tooltip(
@@ -175,7 +173,7 @@ impl TrayHost {
                 unit,
                 snap.and_then(|s| rpm(s.cpu_fan)),
             );
-            let _ = tray.set_tooltip(plain_tips.then_some(tip));
+            let _ = tray.set_tooltip(Some(tip));
         }
         if let Some(tray) = &self.gpu {
             let _ = tray.set_icon(icon(self.graph(&settings.tray_icons.gpu, &self.gpu_series), self.size));
@@ -185,7 +183,7 @@ impl TrayHost {
                 unit,
                 snap.and_then(|s| rpm(s.gpu_fan)),
             );
-            let _ = tray.set_tooltip(plain_tips.then_some(tip));
+            let _ = tray.set_tooltip(Some(tip));
         }
         if let (Some(tray), Some(s)) = (&self.app, snap) {
             let t =

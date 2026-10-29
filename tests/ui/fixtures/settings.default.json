@@ -69,7 +69,6 @@
       "temperature_max_c": 100.0,
       "temperature_min_c": 30.0
     },
-    "hover_details": true,
     "show_app_icon": true
   }
 }

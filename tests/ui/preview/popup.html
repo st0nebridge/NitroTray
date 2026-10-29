@@ -24,6 +24,7 @@
 <div class="bar">
   <label>mode <select id="mode"><option>side</option><option>overlay</option><option>ours</option></select></label>
   <label>state <select id="state"><option>reference</option><option>helper-missing</option></select></label>
+  <label>tensor <select id="unlock"><option>none</option><option>unlocked</option><option>locked</option><option>lost</option><option>checking</option><option>unknown</option></select></label>
   <label>overlay opacity <input id="op" type="range" min="0" max="1" step="0.05" value="0.5"></label>
   <label><input id="diff" type="checkbox"> difference</label>
   <label>scale <select id="scale"><option>1</option><option>2</option></select></label>
@@ -34,15 +35,16 @@
 </div>
 <script type="module">
   import { referenceState, helperMissingState } from '/tests/ui/fixtures/reference-state.js';
+  import { UNLOCK_VIEWS } from '/tests/ui/fixtures/unlock-views.js';
   const q = new URLSearchParams(location.search);
   const $ = (id) => document.getElementById(id);
   const stage = $('stage');
   const frame = $('popup');
-  for (const k of ['mode', 'state', 'scale']) if (q.get(k)) $(k).value = q.get(k);
+  for (const k of ['mode', 'state', 'scale', 'unlock']) if (q.get(k)) $(k).value = q.get(k);
   if (q.has('bare')) document.body.classList.add('bare');
   function push() {
     const w = frame.contentWindow;
-    const s = $('state').value === 'reference' ? referenceState : helperMissingState;
+    const s = { ...($('state').value === 'reference' ? referenceState : helperMissingState), unlock: UNLOCK_VIEWS[$('unlock').value] };
     if (w?.nitro?.onState) w.nitro.onState(structuredClone(s)); else setTimeout(push, 50);
   }
   function layout() {
@@ -55,7 +57,7 @@
     if (mode === 'overlay') $('ref').style.opacity = $('op').value;
   }
   frame.addEventListener('load', push);
-  for (const id of ['mode', 'state', 'op', 'diff', 'scale']) $(id).addEventListener('input', () => { layout(); push(); });
+  for (const id of ['mode', 'state', 'unlock', 'op', 'diff', 'scale']) $(id).addEventListener('input', () => { layout(); push(); });
   layout();
   window.addEventListener('nitro:command', (e) => console.log('command', e.detail));
 </script>

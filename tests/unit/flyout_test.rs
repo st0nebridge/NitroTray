@@ -1,5 +1,5 @@
 //! @module flyout_test
-//! @description Hover flyout content: series per icon, unit conversion, stats, fan scale, span and gaps.
+//! @description Details popup content: series per icon, unit conversion, stats, fan scale, span and gaps.
 use nitrotray::config::settings::{AccentIntensity, Settings, TemperatureUnit};
 use nitrotray::telemetry::history::MetricsHistory;
 use nitrotray::telemetry::snapshot::{CpuTelemetry, FanTelemetry, GpuTelemetry, SystemSnapshot};
@@ -124,4 +124,14 @@ fn serialises_for_the_page() {
     assert_eq!(v["level"], "hot");
     assert_eq!(v["temps"][1], serde_json::Value::Null);
     assert_eq!(v["prefs"]["theme"], "dark");
+}
+
+#[test]
+fn the_details_popup_state_carries_no_unlock_view_until_the_host_adds_one() {
+    let s = Settings::default();
+    for kind in [FlyoutKind::Cpu, FlyoutKind::Gpu] {
+        let st = state(kind, &history(), &s, prefs());
+        assert!(st.unlock.is_none(), "{kind:?}: the view is the host's to attach, and only for the GPU");
+        assert!(serde_json::to_value(&st).unwrap().get("unlock").is_some(), "the page always finds the key");
+    }
 }

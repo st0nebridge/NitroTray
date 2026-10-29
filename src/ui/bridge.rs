@@ -3,7 +3,7 @@
 //!
 //! @input  JSON command strings posted by the page via `window.ipc.postMessage`.
 //! @output Strictly parsed `UiCommand`s; `UiState` values; JS call snippets for `evaluate_script`.
-//! @dependencies serde, serde_json, acer, controls, config, ipc::protocol, telemetry::thresholds
+//! @dependencies serde, serde_json, acer, controls, config, ipc::protocol, telemetry::thresholds, unlock::view
 use serde::{Deserialize, Serialize};
 
 use crate::acer::Capabilities;
@@ -11,6 +11,7 @@ use crate::config::settings::{AccentIntensity, Settings, TemperatureUnit};
 use crate::controls::{FanCurveProfile, FanMode, PerformanceMode};
 use crate::ipc::protocol::ProviderStatus;
 use crate::telemetry::thresholds::TempLevel;
+use crate::unlock::view::UnlockView;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct UiProcessor {
@@ -87,6 +88,8 @@ pub struct UiState {
     pub has_custom_profile: bool,
     pub pending: Option<PendingAction>,
     pub notice: Option<Notice>,
+    /// The GPU's tensor-core lock state (badge in the popup's GPU block).
+    pub unlock: UnlockView,
     pub prefs: UiPrefs,
 }
 
@@ -109,15 +112,30 @@ pub enum UiCommand {
     OpenFanCurve,
     OpenNitroSense,
     DismissNotice,
-    SetFanMode { mode: FanMode },
-    SetPerformanceMode { mode: PerformanceMode },
-    SaveSettings { settings: Box<Settings> },
-    SaveFanCurve { profile: FanCurveProfile, apply: bool },
-    SetAutostart { enabled: bool },
+    SetFanMode {
+        mode: FanMode,
+    },
+    SetPerformanceMode {
+        mode: PerformanceMode,
+    },
+    SaveSettings {
+        settings: Box<Settings>,
+    },
+    SaveFanCurve {
+        profile: FanCurveProfile,
+        apply: bool,
+    },
+    SetAutostart {
+        enabled: bool,
+    },
     ExportDiagnostics,
     InstallHelper,
     PinTrayIcons,
-    Navigate { page: Page },
+    /// Measure the GPU's tensor-core rate again now (the lock badge was clicked).
+    RecheckTensor,
+    Navigate {
+        page: Page,
+    },
 }
 
 pub const MAX_COMMAND_BYTES: usize = 64 * 1024;

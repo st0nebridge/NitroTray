@@ -4,7 +4,7 @@
 //!
 //! @input  `service::cli::Command`.
 //! @output A running pipe server + hardware thread; SCM registration side effects for install/uninstall.
-//! @dependencies windows-service, ipc::pipe, service::{core, worker, simulated}, acer::{gaming, wmi}, platform::windows
+//! @dependencies windows-service, ipc::pipe, service::{core, worker, simulated, esp, unlock_log}, acer::{gaming, wmi}, platform::windows
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
@@ -28,8 +28,10 @@ use crate::ipc::protocol::ProviderStatus;
 use crate::meta;
 use crate::service::core::{status_for, ServiceCore};
 use crate::service::curve::TICK_MS;
+use crate::service::esp::EspUnlockLog;
 use crate::service::install_path;
 use crate::service::simulated::SimulatedBackend;
+use crate::service::unlock_log::{StaticUnlockLog, UnlockLogSource};
 use crate::service::worker::{self, CoreMsg};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
@@ -71,7 +73,9 @@ impl Runner {
                     Err(e) => (Box::new(UnavailableBackend(e.clone())), status_for(&e)),
                 }
             };
-            let mut core = ServiceCore::new(backend, model, status, marker);
+            let unlock_log: Box<dyn UnlockLogSource> =
+                if simulate { Box::new(StaticUnlockLog(None)) } else { Box::new(EspUnlockLog) };
+            let mut core = ServiceCore::new(backend, model, status, marker).with_unlock_log(unlock_log);
             worker::run(&mut core, &rx, Duration::from_millis(TICK_MS));
         });
         let submit_tx = tx.clone();

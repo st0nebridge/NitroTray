@@ -1,5 +1,5 @@
 //! @module ui::webview
-//! @description Builds the popup, hover flyout and full windows with their WebView2 pages, and applies
+//! @description Builds the popup, details popup and full windows with their WebView2 pages, and applies
 //! Windows 11 chrome (DWM rounded corners, border colour, dark title bar, backdrop).
 //!
 //! @input  The tao event-loop target, a page-message callback, a shared WebContext.
@@ -183,47 +183,18 @@ pub fn build_popup<T: 'static>(
     Ok(Surface { window, webview })
 }
 
-/// The hover flyout: never takes focus, even when clicked (WS_EX_NOACTIVATE).
+/// The details popup shown by a click on a CPU or GPU tray icon. It takes focus when shown (like the main
+/// popup, so Escape and focus loss can close it), not when created: building it hidden must not move focus.
 pub fn build_flyout<T: 'static>(
     target: &EventLoopWindowTarget<T>,
     context: &mut WebContext,
     on_message: impl Fn(String) + 'static,
 ) -> Result<Surface, String> {
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
-    };
     let window =
-        tool_window(target, crate::ui::flyout::FLYOUT_SIZE, false, false).map_err(|e| format!("flyout {e}"))?;
-    let hwnd = HWND(window.hwnd() as *mut _);
-    // SAFETY: adds one extended style bit to a window this process owns.
-    unsafe {
-        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE.0 as isize);
-    }
+        tool_window(target, crate::ui::flyout::FLYOUT_SIZE, false, false).map_err(|e| format!("details popup {e}"))?;
     let webview = build_webview(&window, context, "flyout.html", on_message, false)
-        .map_err(|e| format!("flyout webview: {e}"))?;
+        .map_err(|e| format!("details popup webview: {e}"))?;
     Ok(Surface { window, webview })
-}
-
-/// Shows a window on top without activating it (the foreground app keeps focus).
-pub fn show_inactive(hwnd: HWND) {
-    use windows::Win32::UI::WindowsAndMessaging::{
-        SetWindowPos, ShowWindow, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_SHOWNOACTIVATE,
-    };
-    // SAFETY: visibility and z-order of a window this process owns.
-    unsafe {
-        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-        let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-    }
-}
-
-/// Hides a window shown with `show_inactive` (tao's own visibility flag was never set for it).
-pub fn hide_window(hwnd: HWND) {
-    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
-    // SAFETY: hides a window this process owns.
-    unsafe {
-        let _ = ShowWindow(hwnd, SW_HIDE);
-    }
 }
 
 /// The NitroTray app icon at a system icon metric (`SM_CXSMICON` title bar, `SM_CXICON` taskbar/Alt-Tab)

@@ -207,3 +207,75 @@ fn error_and_status_mapping() {
     assert_eq!(status_for(&AcerError::AccessDenied), ProviderStatus::AccessDenied);
     assert_eq!(status_for(&AcerError::NotPresent), ProviderStatus::NotPresent);
 }
+
+mod unlock_boot {
+    use super::*;
+    use nitrotray::service::unlock_log::{StaticUnlockLog, UnlockLogSource};
+    use nitrotray::unlock::boot_log::{BootReport, BootStatus};
+
+    struct Failing;
+    impl UnlockLogSource for Failing {
+        fn latest(&mut self) -> Result<Option<BootReport>, String> {
+            Err("the EFI system partition could not be read".into())
+        }
+    }
+
+    fn report() -> BootReport {
+        BootReport {
+            run: "RUN0028".into(),
+            status: BootStatus::Unlocked,
+            build: "auto".into(),
+            written_unix: Some(1_793_000_000),
+        }
+    }
+
+    #[test]
+    fn the_newest_report_is_returned() {
+        let mut c = core(FakeBackend::default()).with_unlock_log(Box::new(StaticUnlockLog(Some(report()))));
+        let r = c.handle(Request::GetUnlockBoot);
+        assert!(r.ok);
+        assert_eq!(r.unlock_boot, Some(report()));
+    }
+
+    #[test]
+    fn no_log_is_an_answer_not_an_error() {
+        let mut c = core(FakeBackend::default()).with_unlock_log(Box::new(StaticUnlockLog(None)));
+        let r = c.handle(Request::GetUnlockBoot);
+        assert!(r.ok && r.unlock_boot.is_none() && r.error.is_none());
+    }
+
+    #[test]
+    fn without_a_source_it_is_unavailable() {
+        let mut c = core(FakeBackend::default());
+        assert_eq!(code(&c.handle(Request::GetUnlockBoot)), ErrorCode::Unavailable);
+    }
+
+    #[test]
+    fn a_failing_source_is_unavailable_with_its_reason() {
+        let mut c = core(FakeBackend::default()).with_unlock_log(Box::new(Failing));
+        let r = c.handle(Request::GetUnlockBoot);
+        assert_eq!(code(&r), ErrorCode::Unavailable);
+        assert!(r.error.unwrap().message.contains("EFI system partition"));
+    }
+
+    #[test]
+    fn it_does_not_depend_on_the_acer_interface() {
+        for status in [ProviderStatus::AccessDenied, ProviderStatus::NotPresent] {
+            let mut c = ServiceCore::new(FakeBackend::default(), "m", status, None)
+                .with_unlock_log(Box::new(StaticUnlockLog(Some(report()))));
+            assert_eq!(c.handle(Request::GetUnlockBoot).unlock_boot, Some(report()), "{status:?}");
+            assert_eq!(
+                code(&c.handle(Request::GetSensors)),
+                if status == ProviderStatus::AccessDenied { ErrorCode::AccessDenied } else { ErrorCode::Unavailable }
+            );
+        }
+    }
+
+    #[test]
+    fn the_line_protocol_carries_it() {
+        let mut c = core(FakeBackend::default()).with_unlock_log(Box::new(StaticUnlockLog(Some(report()))));
+        let line = c.handle_line(r#"{"op":"get_unlock_boot"}"#);
+        let resp = parse_response(&line).unwrap();
+        assert_eq!(resp.unlock_boot, Some(report()));
+    }
+}

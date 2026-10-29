@@ -96,3 +96,37 @@ fn response_size_limit_is_exact() {
     assert_eq!(exact.len(), MAX_MESSAGE_BYTES);
     assert!(parse_response(&exact).unwrap().ok, "exactly at the limit is accepted");
 }
+
+#[test]
+fn the_unlock_boot_request_is_typed_and_takes_no_fields() {
+    assert_eq!(parse_request(r#"{"op":"get_unlock_boot"}"#), Ok(Request::GetUnlockBoot));
+    assert_eq!(
+        encode_line(&Request::GetUnlockBoot),
+        "{\"op\":\"get_unlock_boot\"}
+"
+    );
+    for bad in [
+        r#"{"op":"get_unlock_boot","path":"\x"}"#,
+        r#"{"op":"get_unlock_boot","run":"RUN0001"}"#,
+        r#"{"op":"read_file","path":"RUN0001.TXT"}"#,
+    ] {
+        assert_eq!(parse_request(bad).unwrap_err().code, ErrorCode::InvalidRequest, "{bad}");
+    }
+}
+
+#[test]
+fn an_unlock_boot_report_round_trips_and_is_optional() {
+    use nitrotray::unlock::boot_log::{BootReport, BootStatus};
+    let report = BootReport {
+        run: "RUN0028".into(),
+        status: BootStatus::Unlocked,
+        build: "auto".into(),
+        written_unix: Some(1_793_000_000),
+    };
+    let line = encode_line(&Response { unlock_boot: Some(report.clone()), ..Response::ok() });
+    assert!(line.contains(r#""status":"unlocked""#), "{line}");
+    assert_eq!(parse_response(&line).unwrap().unlock_boot, Some(report));
+    let none = encode_line(&Response::ok());
+    assert!(!none.contains("unlock_boot"), "absent fields stay absent: {none}");
+    assert_eq!(parse_response(&none).unwrap().unlock_boot, None);
+}

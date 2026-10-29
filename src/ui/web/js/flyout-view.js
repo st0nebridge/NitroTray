@@ -1,9 +1,10 @@
 /**
  * @module flyout-view
- * @description Hover flyout view: the CPU or GPU icon's temperature/fan history drawn large, live values
+ * @description Details popup view: the CPU or GPU icon's temperature/fan history drawn large, live values
  *              coloured by temperature band, and min/avg/max over the graph window.
  *
- * @input  `FlyoutState` from Rust (`src/ui/flyout.rs`): series oldest-first, ranges, colours, stats.
+ * @input  `FlyoutState` from Rust (`src/ui/flyout.rs`): series oldest-first, ranges, colours, stats, and for
+ *         the GPU the tensor-core lock state.
  * @output DOM text and a canvas drawing; gaps are breaks, never interpolated.
  * @dependencies format, icons, monitor (toPoints)
  */
@@ -88,12 +89,27 @@ function stroke(ctx, run, color, width) {
   ctx.stroke();
 }
 
+/** The GPU's tensor-core row: lock state and reading on one line, the unlocker's boot log (or why there is no reading) below. */
+export function renderTensor(root, u) {
+  const $ = (id) => root.querySelector(`#${id}`);
+  const row = $('fly-tensor');
+  root.classList.toggle('has-tensor', !!u);
+  row.hidden = !u;
+  if (!u) return;
+  row.dataset.state = u.state;
+  row.title = [u.detail, u.boot].filter(Boolean).join('\n');
+  $('tensor-badge').textContent = u.badge || 'Not checked';
+  $('tensor-sum').textContent = u.summary || '';
+  $('tensor-line2').textContent = u.boot || (u.summary ? '' : u.detail || '');
+}
+
 export function createFlyoutView(root, win = globalThis) {
   const $ = (id) => root.querySelector(`#${id}`);
   let kind = null;
   return {
     render(state) {
       if (!state) return;
+      renderTensor(root, state.unlock);
       const symbol = state.prefs?.unit_symbol || '°C';
       if (state.kind !== kind && ICONS[state.kind]) {
         kind = state.kind;

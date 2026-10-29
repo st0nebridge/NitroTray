@@ -365,3 +365,68 @@ commit_ref: "release/0.1.2"
 author: "Brandon Stonebridge"
 timestamp: "2026-10-08T00:00:00Z"
 ```
+
+```yaml
+id: CU-20261008-003
+type: chore
+title: "Release 0.1.2 prepared: public commit b64bba6 from development commit 17cf85e"
+description: "First public release under D-20261008-001, prepared and not yet pushed. Public commit b64bba682c60899ee5148d736f2c171ce9f1f4b3 (new root, tree 5a345ad, 222 files) is development commit 17cf85e minus the 7 paths .release-scan excludes; every other blob and mode is identical. Release scan, strict, exit 0 with nothing to fix or review on the tree and commit; it fails on the development commit (12 findings: excluded paths, agent notes, scan tooling, a private word) and on a canary private word (44 findings), so it can fail. Release notes scan clean. From a git archive export: npm ci, bin/test.ps1 (286 unit, 34 regression, 86 web UI tests, all passing), bin/package.ps1 -> NitroTray-0.1.2-setup.exe, 1,099,676 bytes, sha256 85dfef52b9ea88ebbb76eef4ba6770f707b6c5890d22c585b4cae1a6943ba699. The unpacked installer scans clean with --binaries: no build-machine paths (0.1.1 had 120), and its 10 distinct GUIDs are Microsoft's WebView2 loader ids and NSIS's supportedOS manifest ids, allowed with reasons. The elevated round trip of that installer passed 62 of 62 checks; 0.1.2 was then installed with the helper and Start with Windows, and the tray started unelevated. Firmware modes were not changed (Auto / Quiet before and after). The images carry no metadata chunks."
+impact: none
+affected_modules: [".release-scan"]
+related_tests: []
+commit_ref: "release/0.1.2"
+author: "Brandon Stonebridge"
+timestamp: "2026-10-08T21:20:00Z"
+```
+
+```yaml
+id: CU-20261008-004
+type: chore
+title: "Release 0.1.2 published on st0nebridge/NitroTray"
+description: "Pushed on the owner's request. Backup first: a bundle of every local ref, the remote's refs and the v0.1.0/v0.1.1 release assets and notes, kept in the git directory (backup/2026-10-08-before-0.1.2). One atomic push, leased on the remote's old values: main bc9a00e -> b64bba6 (forced, new root), tag v0.1.2 added, tags v0.1.0 and v0.1.1 deleted. The GitHub releases v0.1.0 and v0.1.1 were deleted. v0.1.2 was created as a draft from the export's dist/ (NitroTray-0.1.2-setup.exe and SHA256SUMS.txt), downloaded back and checked against SHA256SUMS.txt, then published as Latest; GitHub reports the installer's digest as sha256 85dfef52b9ea88ebbb76eef4ba6770f707b6c5890d22c585b4cae1a6943ba699. git ls-remote origin now lists only main and v0.1.2 at b64bba6. The repository stays private. Local branch public tracks origin/main; the development main is not pushed and keeps the old v0.1.0/v0.1.1 tags locally."
+impact: none
+affected_modules: []
+related_tests: []
+commit_ref: "v0.1.2"
+author: "Brandon Stonebridge"
+timestamp: "2026-10-08T21:30:00Z"
+```
+
+```yaml
+id: CU-20261029-001
+type: feature
+title: "Tray icon gestures: tooltip on hover, details popup on click, main popup on double click"
+description: "Owner's request (D-20261029-001, which supersedes D-20261001-002). Hovering the CPU or GPU graph icon now shows Windows' plain tooltip, always; the 350 ms hover flyout and src/tray/hover.rs are gone, and so is the hover_details setting (an old config that still has it loads unchanged; the Settings row is replaced by a hint). A single left click on a graph icon opens that icon's details popup (the former flyout page, 340x214 DIP): it is now a focused window like the main popup, closed by Escape (its page may send close_popup besides ready), a second click on the icon, or clicking elsewhere when close on focus loss is on; a click on the icon that the focus loss had just closed counts as the close, not a reopen. A double left click on any icon opens the main popup and leaves it open. Windows delivers a double click as press, release, double-click, release, so the first release has already opened the details popup and the double click swaps it for the main popup; the release that ends the double click is ignored, and every press clears that flag. New module tray::clicks holds the gesture logic; the runtime and app::surfaces carry it out (toggle_details, show_flyout takes focus, check_deactivation covers both popups, only one popup is shown at a time). The app icon's single click still toggles the main popup, where double-clicking it used to open and immediately close it (the second release toggled it back). Unchanged: the details popup reads only embedded-controller values and does not count as a visible surface for NVML. Replaced tests: tests/unit/hover_test.rs by clicks_test.rs; the hover cases of cu_20261001_002 by cu_20261029_001 (its driver-metrics case stays); cu_20261001_001 keeps its assertions and now owns the show-without-activating helpers that the app no longer uses. The settings-form golden changed by the removed row and the new hint only. tests/live/webviews.ps1 gained the gesture checks: the notification area's own mouse messages are posted to a graph icon's window, and a second scenario checks that focus loss closes the details popup. Verified on a release build, 3 runs of 35 checks, all passing (one earlier run failed its double-click check because the desktop app hosting the test took the foreground and the popup's close-on-focus-loss rule correctly closed it; the gesture scenario now turns that setting off). Not exercised: a physical click on the real notification area, the tooltip text itself, and focus hand-off on a real double click (the live checks post the shell's messages and cannot give the app the focus right a real click carries)."
+impact: medium
+affected_modules: ["src/tray/clicks.rs", "src/tray/mod.rs", "src/app/runtime.rs", "src/app/surfaces.rs", "src/app/tray_host.rs", "src/config/settings.rs", "src/ui/webview.rs", "src/ui/flyout.rs", "src/ui/web/js/flyout.js", "src/ui/web/js/settings.js", "README.md", "docs/architecture.md", "DECISIONS.md"]
+related_tests: ["tests/regression/cu_20261029_001.rs", "tests/unit/clicks_test.rs", "tests/ui/entries.test.mjs", "tests/live/webviews.ps1"]
+commit_ref: "feature/tray-click-gestures"
+author: "Brandon Stonebridge"
+timestamp: "2026-10-29T06:00:00Z"
+```
+
+```yaml
+id: CU-20261029-002
+type: feature
+title: "Tensor-core lock state in the popup and the GPU details popup"
+description: "Owner's request (D-20261029-002, D-20261029-003): show whether the GPU's tensor-core throttle is lifted, from a live measurement and from the UEFI unlocker's boot log, in both the popup and the GPU details popup. New module unlock: ptx generates a loop of eight independent mma.sync.m16n8k16 chains in PTX (FP32 and FP16 accumulate), cuda binds nvcuda.dll at the moment of use, JIT-compiles it through the driver (no toolkit), times each kernel (best of three, CUDA events) and destroys the context again; state turns the ratio into a verdict (0.50 throttled, about 1.0 lifted, above 0.75 unlocked); boot_log reduces an unlocker RUN log to run, status, build and write time; view combines both into one wording (Unlocked, Locked, Unlock lost when this session's log says unlocked but the rate is half, Checking, or nothing: no measurement is never 'locked'); tracker keeps the last reading, the last failure and the next-due time (a reading is reused for 60 s, a failure is not retried sooner, one check at a time). The check runs on its own thread (app::tensor) when the popup opens, when the GPU icon is clicked and when the badge is clicked, and never with GPU driver telemetry off. The helper gets a seventh typed command, get_unlock_boot (service::{esp, unlock_log}): no argument, reads only the highest-numbered RUN<n>.TXT in the one fixed GPU4090-UNLOCK directory of the FAT volume that holds it, found by enumerating volume GUID paths so nothing is mounted or written, at most 256 KiB, returns a typed summary and never file contents, and is answerable without the Acer interface. UI: a badge in the popup's GPU block (free strip above the temperature, click to re-measure, tooltip with the full sentence and the boot line; hidden when there is nothing to claim) and a two-line row in the GPU details popup (the graph gives up 22 DIP); the popup is unchanged when the badge is hidden. The model's UI-state derivation moved to app::ui_state to keep every file under 400 lines. The installer's helper description says seven typed commands; the GPU driver telemetry hint mentions the check; docs/images popup and GPU details images were regenerated (bin/ui-snap.ps1 -Unlock). Measured on the AN515-58 (RTX 4060 Laptop, hybrid mode, throttle on): a Python spike read 27.6 / 55.1 TFLOPS (0.50); the Rust probe read 0.50 and, in a repeat test, 0.46 and 0.50, about a third of a second per probe; the EFI partition was read elevated by volume path (RUN0028, unlocked, written 2 s before this session's boot, so the FAT-to-UTC conversion and the session rule hold); an end-to-end run with the new helper in console mode and an isolated app showed 'Unlock lost, ratio 0.56, Unlocker run RUN0028: unlocked at boot' in the GPU details popup, which is what happened on this boot (unlocked, then the RTX was powered off before the keeper started); against the installed 0.1.2 helper, which does not know the command, the same run showed 'Locked, ratio 0.50' with no boot line. Tests: 370 unit, 41 regression (cu_20261029_002), 96 UI, three ignored live tests; the live webview check passed 35 of 35 on the final build; clippy and rustfmt clean; module fitness 100 of 100 with no file over 400 lines. Coverage of the logic modules is 95 to 100 %; cuda.rs and esp.rs are glue under the new waiver quality/waivers/hardware-glue.md. Mutation testing of the new pure modules: 109 mutants, 94 caught, 9 missed, 6 unviable; the missed ones got tests, dead code (UnlockTracker::checking) was removed, and one equivalent mutant (TensorRates::ratio, acc16 > 0.0 against the is_finite check beside it) is excluded in .cargo/mutants.toml with its reason; the iterate pass tested 17 mutants, 16 caught, 1 unviable, none missed. Goldens: the flyout markup gained the hidden row, the settings form's hint text changed, nothing else. Not observed: the unlocked reading (ratio about 1.0) on this machine, which needs a power-cycled unlocked boot; the 0.75 threshold sits between the measured throttled 0.50 and the unlocker's published unlocked figures."
+impact: medium
+affected_modules: ["src/unlock", "src/service/unlock_log.rs", "src/service/esp.rs", "src/service/core.rs", "src/service/host.rs", "src/ipc/protocol.rs", "src/ipc/client.rs", "src/app/tensor.rs", "src/app/ui_state.rs", "src/app/model.rs", "src/app/runtime.rs", "src/app/surfaces.rs", "src/app/effects.rs", "src/app/bootstrap.rs", "src/app/events.rs", "src/platform/windows.rs", "src/ui/bridge.rs", "src/ui/flyout.rs", "src/ui/web", "src/installer/nitrotray.nsi", "README.md", "docs/architecture.md", "DECISIONS.md", "quality/waivers/hardware-glue.md", "bin/ui-snap.ps1"]
+related_tests: ["tests/regression/cu_20261029_002.rs", "tests/unit/unlock_state_test.rs", "tests/unit/unlock_boot_log_test.rs", "tests/unit/unlock_view_test.rs", "tests/unit/unlock_tracker_test.rs", "tests/unit/unlock_ptx_test.rs", "tests/unit/unlock_log_test.rs", "tests/unit/tensor_worker_test.rs", "tests/unit/unlock_cuda_live_test.rs", "tests/unit/esp_live_test.rs", "tests/ui/popup-view.test.mjs", "tests/ui/flyout-view.test.mjs"]
+commit_ref: "feature/tensor-lock-state"
+author: "Brandon Stonebridge"
+timestamp: "2026-10-29T06:43:00Z"
+```
+
+```yaml
+id: CU-20261029-003
+type: chore
+title: "Version 0.1.3 built and installed on the development machine"
+description: "Owner's request: install a new release. Version 0.1.3 (Cargo.toml, Cargo.lock, package.json, package-lock.json) holds the tray icon gestures (CU-20261029-001) and the tensor-core lock state (CU-20261029-002). bin/test.ps1 passed (370 unit, 41 regression, 96 UI tests); bin/package.ps1 built dist/NitroTray-0.1.3-setup.exe, 1,128,382 bytes, sha256 9f8ab766525cd9af1b7efd0ecfaea86ba886756b72ddb6e217dd702a8ec6f770. It was run silently and elevated over the installed 0.1.2 (exit code 0): the registry says 0.1.3, NitroTray.exe and NitroTrayService.exe in the Program Files folder are byte-identical to the build, the helper service was stopped and started again (LocalSystem, automatic start kept) and the sign-in entry still points at the installed exe. The tray was then started unelevated through Explorer. End to end on the installed pair: the installed LocalSystem helper read the unlocker's newest boot log from the EFI system partition (RUN0028, unlocked) and an isolated instance of the installed app showed 'Unlock lost' in the popup badge and the GPU details popup (half rate now, ratio 0.50 and 0.45 in two checks), which matches this boot. The elevated installer round trip (tests/installer/roundtrip.ps1) needs a machine without NitroTray installed, so it is run on the release installer built from a clean export rather than on this build."
+impact: none
+affected_modules: ["Cargo.toml", "Cargo.lock", "package.json", "package-lock.json"]
+related_tests: []
+commit_ref: "release/0.1.3"
+author: "Brandon Stonebridge"
+timestamp: "2026-10-29T06:47:00Z"
+```

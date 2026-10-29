@@ -45,8 +45,11 @@ mod worker_test;
 
 #[cfg(windows)]
 mod binaries_test;
+mod clicks_test;
 #[cfg(windows)]
 mod cpu_test;
+#[cfg(windows)]
+mod esp_live_test;
 #[cfg(windows)]
 mod gpu_test;
 #[cfg(windows)]
@@ -55,7 +58,6 @@ mod hardware_test;
 mod host_test;
 #[cfg(windows)]
 mod hotkeys_test;
-mod hover_test;
 #[cfg(windows)]
 mod live_control_test;
 #[cfg(windows)]
@@ -66,8 +68,17 @@ mod pipe_test;
 mod services_test;
 #[cfg(windows)]
 mod signal_test;
+mod tensor_worker_test;
 #[cfg(windows)]
 mod tray_prefs_test;
+mod unlock_boot_log_test;
+#[cfg(windows)]
+mod unlock_cuda_live_test;
+mod unlock_log_test;
+mod unlock_ptx_test;
+mod unlock_state_test;
+mod unlock_tracker_test;
+mod unlock_view_test;
 #[cfg(windows)]
 mod windows_test;
 #[cfg(windows)]

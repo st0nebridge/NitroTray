@@ -1,5 +1,5 @@
 //! @module app::surfaces
-//! @description Popup, hover flyout and full-window management: creation, placement beside the tray,
+//! @description Popup, details popup and full-window management: creation, placement beside the tray,
 //! show/hide/toggle with focus-loss dismissal, and Windows 11 chrome.
 //!
 //! @input  The runtime's surfaces and settings; tray anchor rectangles.
@@ -105,8 +105,8 @@ impl Runtime {
     }
 
     pub(crate) fn show_popup(&mut self, anchor: Option<Rect>) {
-        self.hover.dismissed();
         self.hide_flyout();
+        self.request_tensor(false);
         if let Some(popup) = &self.popup {
             place(popup, POPUP_SIZE, anchor);
         }
@@ -170,12 +170,10 @@ impl Runtime {
         self.update_visibility();
     }
 
-    /// The flyout exists only while a graph icon is shown and hover details are on.
+    /// The details popup exists only while a graph icon is shown.
     pub(crate) fn sync_flyout_surface(&mut self, target: &EventLoopWindowTarget<UserEvent>) {
         let t = &self.model.settings.tray_icons;
-        let wanted = t.hover_details && (t.cpu.enabled || t.gpu.enabled);
-        if !wanted {
-            self.hover.dismissed();
+        if !(t.cpu.enabled || t.gpu.enabled) {
             self.hide_flyout();
             self.flyout = None;
             return;
@@ -190,45 +188,75 @@ impl Runtime {
                 self.flyout = Some(surface);
                 self.apply_chrome();
             }
-            Err(e) => self.model.notify(NoticeKind::Error, "Hover details could not be created.", e, self.now()),
+            Err(e) => self.model.notify(NoticeKind::Error, "Details popup could not be created.", e, self.now()),
         }
     }
 
-    /// Shows the flyout for `kind` above its icon without taking focus.
+    /// A single click on a graph icon: opens that icon's popup, or closes it when it is the one showing
+    /// (or was closed by the focus loss this very click caused, as with `toggle_popup`).
+    pub(crate) fn toggle_details(&mut self, kind: FlyoutKind, anchor: Rect) {
+        if self.flyout_kind == Some(kind) {
+            self.hide_flyout();
+        } else if !self.flyout_hidden.is_some_and(|(k, at)| k == kind && at.elapsed() < TOGGLE_GRACE) {
+            self.show_flyout(kind, anchor);
+        }
+    }
+
+    /// Shows the details popup for `kind` beside its icon and gives it focus (Escape and focus loss close it).
     pub(crate) fn show_flyout(&mut self, kind: FlyoutKind, anchor: Rect) {
+        if self.flyout.is_none() {
+            return;
+        }
+        // Both sit beside the tray: only one at a time.
+        if self.popup_visible {
+            self.hide_popup();
+        }
+        // A click on the GPU icon is a deliberate look at the GPU: refresh the tensor lock state if it is stale.
+        if kind == FlyoutKind::Gpu {
+            self.request_tensor(false);
+        }
         let Some(f) = &self.flyout else { return };
         place(f, FLYOUT_SIZE, Some(anchor));
         self.flyout_kind = Some(kind);
         f.set_hidden(false);
         self.push_flyout();
         if let Some(f) = &self.flyout {
-            webview::show_inactive(f.hwnd());
+            f.window.set_visible(true);
+            f.window.set_focus();
+            let _ = f.webview.focus();
         }
     }
 
     pub(crate) fn hide_flyout(&mut self) {
-        if let (Some(f), Some(_)) = (&self.flyout, self.flyout_kind) {
-            webview::hide_window(f.hwnd());
+        if let (Some(f), Some(kind)) = (&self.flyout, self.flyout_kind) {
+            f.window.set_visible(false);
             f.set_hidden(true);
+            self.flyout_hidden = Some((kind, Instant::now()));
         }
         self.flyout_kind = None;
     }
 
-    /// Sends the visible flyout its processor's history and current values.
+    /// Sends the visible details popup its processor's history and current values.
     pub(crate) fn push_flyout(&self) {
         if let (Some(f), Some(kind)) = (&self.flyout, self.flyout_kind) {
-            let state = flyout::state(kind, &self.history, &self.model.settings, self.model.prefs());
+            let mut state = flyout::state(kind, &self.history, &self.model.settings, self.model.prefs());
+            state.unlock = (kind == FlyoutKind::Gpu).then(|| self.model.unlock_view(self.now()));
             f.eval(&bridge::script_call("onFlyout", &state));
         }
     }
 
-    /// Hides the popup when another window took the foreground.
+    /// Hides the popup and the details popup when another window took the foreground.
     pub(crate) fn check_deactivation(&mut self) {
-        let Some(popup) = &self.popup else { return };
+        if !self.model.settings.general.close_on_focus_loss {
+            return;
+        }
         // SAFETY: plain query of the foreground window.
         let fg = unsafe { GetForegroundWindow() };
-        if self.popup_visible && self.model.settings.general.close_on_focus_loss && fg != popup.hwnd() {
+        if self.popup_visible && self.popup.as_ref().is_some_and(|p| p.hwnd() != fg) {
             self.hide_popup();
+        }
+        if self.flyout_kind.is_some() && self.flyout.as_ref().is_some_and(|f| f.hwnd() != fg) {
+            self.hide_flyout();
         }
     }
 }

@@ -57,3 +57,11 @@ fn single_instance_is_exclusive() {
 fn shell_open_rejects_nonsense_targets() {
     assert!(nitrotray::platform::windows::shell_open(r"C:\definitely\not\here.nitro").is_err());
 }
+
+#[test]
+fn the_session_start_is_in_the_past_and_not_ancient() {
+    let start = nitrotray::platform::windows::session_start_unix().expect("a session start");
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    assert!(start < now, "{start} vs {now}");
+    assert!(now - start < 400 * 86_400, "uptime of more than 400 days is not a boot time: {}", now - start);
+}

@@ -1,13 +1,13 @@
 //! @module ui::flyout
-//! @description Content of the hover flyout shown over the CPU or GPU tray graph icon: that processor's
+//! @description Content of the details popup opened by a click on the CPU or GPU tray graph icon: that processor's
 //! temperature and fan-speed history (the icon's graph, large), current values and temperature stats.
 //!
 //! @input  Which icon (CPU/GPU), the monitoring history, settings, and the page preferences.
 //! @output A serialisable `FlyoutState` in the user's temperature unit, pushed to `flyout.html`.
-//! @dependencies serde, config::settings, telemetry::{history, thresholds}, tray::graph_icon, ui::bridge
+//! @dependencies serde, config::settings, telemetry::{history, thresholds}, tray::graph_icon, ui::bridge, unlock::view
 //!
 //! Only embedded-controller readings (temperature, fan RPM) are shown: they are already polled for the
-//! graph icons, so hovering never starts NVML queries that could wake the discrete GPU (D-20260930-010).
+//! graph icons, so opening it never starts NVML queries that could wake the discrete GPU (D-20260930-010).
 use serde::Serialize;
 
 use crate::config::settings::{GraphIconSettings, Settings};
@@ -15,8 +15,9 @@ use crate::telemetry::history::{History, MetricsHistory};
 use crate::telemetry::thresholds::TempLevel;
 use crate::tray::graph_icon;
 use crate::ui::bridge::UiPrefs;
+use crate::unlock::view::UnlockView;
 
-/// Flyout edge in DIP.
+/// Details popup size in DIP.
 pub const FLYOUT_SIZE: (f64, f64) = (340.0, 214.0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -76,6 +77,8 @@ pub struct FlyoutState {
     pub stats: Option<TempStats>,
     /// Seconds between the oldest and newest sample.
     pub span_s: u64,
+    /// The GPU's tensor-core lock state; the host attaches it, and only for the GPU.
+    pub unlock: Option<UnlockView>,
     pub prefs: UiPrefs,
 }
 
@@ -137,6 +140,7 @@ pub fn state(kind: FlyoutKind, history: &MetricsHistory, settings: &Settings, pr
         fill: icon.fill,
         show_fan: fan_on,
         span_s,
+        unlock: None,
         prefs,
     }
 }

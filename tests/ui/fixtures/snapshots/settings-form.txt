@@ -52,7 +52,7 @@
 <input type="number" data-path="telemetry.background_interval_ms" id="f-telemetry-background_interval_ms" min="1000" max="5000" step="500">
 </div>
 <div class="row">
-<label for="f-telemetry-gpu_driver_queries">GPU driver telemetry (NVML)<span class="hint">Utilisation and clocks while a window is open. May briefly wake the discrete GPU.</span>
+<label for="f-telemetry-gpu_driver_queries">GPU driver telemetry (NVML)<span class="hint">Utilisation and clocks while a window is open, and the tensor-core lock check. May briefly wake the discrete GPU.</span>
 </label>
 <input type="checkbox" data-path="telemetry.gpu_driver_queries" id="f-telemetry-gpu_driver_queries">
 </div>
@@ -91,12 +91,7 @@
 <label for="f-tray_icons-show_app_icon">NitroTray app icon</label>
 <input type="checkbox" data-path="tray_icons.show_app_icon" id="f-tray_icons-show_app_icon">
 </div>
-<div class="row">
-<label for="f-tray_icons-hover_details">Details on hover<span class="hint">Hovering the CPU or GPU icon shows its temperature and fan history instead of the plain tooltip.</span>
-</label>
-<input type="checkbox" data-path="tray_icons.hover_details" id="f-tray_icons-hover_details">
-</div>
-<p class="muted">System Informer–style graphs: temperature fill with the fan-speed line on top. Windows may hide new icons in the overflow — use “Show icons on taskbar” below.</p>
+<p class="muted">System Informer–style graphs: temperature fill with the fan-speed line on top. Click the CPU or GPU icon for its temperature and fan history; double-click it for the main popup. Windows may hide new icons in the overflow — use “Show icons on taskbar” below.</p>
 <div class="icon-grid">
 <div class="icon-card" data-icon-card="cpu">
 <h3>

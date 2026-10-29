@@ -124,7 +124,7 @@ test('popup entry: focusFirst falls back to Close, only Escape closes', async ()
   assert.deepEqual(sent.slice(n), [{ cmd: 'close_popup' }]);
 });
 
-test('flyout entry: announces ready, renders pushed state, blocks the context menu', async () => {
+test('flyout entry: announces ready, renders pushed state, Escape closes, blocks the context menu', async () => {
   const win = loadPage('flyout.html');
   win.HTMLCanvasElement.prototype.getContext = () => null;
   const sent = capture(win);
@@ -142,5 +142,10 @@ test('flyout entry: announces ready, renders pushed state, blocks the context me
   const ev = new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true });
   win.document.body.dispatchEvent(ev);
   assert.equal(ev.defaultPrevented, true);
-  assert.equal(sent.length, 1, 'the flyout never sends commands besides ready');
+  assert.equal(sent.length, 1, 'the details popup sends nothing besides ready until Escape');
+  key(win.document.body, 'a');
+  assert.equal(sent.length, 1, 'other keys do nothing');
+  const esc = key(win.document.body, 'Escape');
+  assert.equal(esc.defaultPrevented, true);
+  assert.deepEqual(sent.slice(1), [{ cmd: 'close_popup' }]);
 });

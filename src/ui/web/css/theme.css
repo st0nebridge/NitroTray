@@ -32,6 +32,7 @@
   --red-strong: #ff1a1f;
   --red-border: #e3161d;
   --warm: #ffa53a;
+  --ok: #3ddc84;
   --critical: #ff3b5c;
   --ring-track: #242424;
   --ring-inner: #111113;
@@ -67,6 +68,7 @@
   --ring-track: #dde1e5;
   --ring-inner: #f6f7f9;
   --warm: #e07a00;
+  --ok: #15803d;
   --focus: #15181b;
 }
 

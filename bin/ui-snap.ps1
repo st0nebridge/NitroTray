@@ -1,14 +1,18 @@
 <#
 @module ui-snap
 @description Renders a UI preview with fixture data in headless Edge at 2x DPR (the same Chromium engine as
-             WebView2): the popup, or the CPU/GPU hover flyout. The popup render can be compared with the 2x
+             WebView2): the popup, or the CPU/GPU details popup. The popup render can be compared with the 2x
              reference image; both feed docs/images.
 
-Usage:  powershell -NoProfile -File bin/ui-snap.ps1 [-View popup|flyout-cpu|flyout-gpu] [-State reference|helper-missing] [-Port 5178]
+Usage:  powershell -NoProfile -File bin/ui-snap.ps1 [-View popup|flyout-cpu|flyout-gpu] [-State reference|helper-missing]
+                                                    [-Unlock none|unlocked|locked|lost|checking|unknown] [-Port 5178]
+        -Unlock is the tensor-core lock state the popup badge (none by default) or the GPU details popup
+        (unlocked by default) shows.
 Needs:  the ui-preview dev server running (node bin/devserver.mjs).
 Output: reports/ui/popup@2x.png (popup-<state>@2x.png), or reports/ui/flyout-<cpu|gpu>@2x.png
 #>
-param([ValidateSet('popup', 'flyout-cpu', 'flyout-gpu')][string]$View = 'popup', [string]$State = 'reference', [int]$Port = 5178)
+param([ValidateSet('popup', 'flyout-cpu', 'flyout-gpu')][string]$View = 'popup', [string]$State = 'reference',
+      [ValidateSet('', 'none', 'unlocked', 'locked', 'lost', 'checking', 'unknown')][string]$Unlock = '', [int]$Port = 5178)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $outDir = Join-Path $root 'reports\ui'
@@ -23,8 +27,10 @@ if (-not $edge) { throw 'Microsoft Edge not found' }
 $profileDir = Join-Path $env:TEMP 'nitrotray-edge-profile'
 if ($View -eq 'popup') {
     $url = "http://localhost:$Port/tests/ui/preview/popup.html?mode=ours&bare&state=$State"; $size = '572,440'
+    if ($Unlock) { $url += "&unlock=$Unlock" }
 } else {
     $url = "http://localhost:$Port/tests/ui/preview/flyout.html?bare&only=$($View.Substring(7))"; $size = '340,214'
+    if ($Unlock) { $url += "&unlock=$Unlock" }
 }
 $edgeArgs = @('--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', "--user-data-dir=$profileDir",
     '--force-device-scale-factor=2', "--window-size=$size", '--virtual-time-budget=3000', "--screenshot=$out", $url)

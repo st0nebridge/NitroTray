@@ -1,10 +1,10 @@
 //! @module app::runtime
 //! @description Tray host event dispatch: routes tray, menu, hotkey, window, page and worker events to the
-//! app model and pushes state back out. The popup and the hover flyout stay instantiated-but-hidden.
+//! app model and pushes state back out. The popup and the details popup stay instantiated-but-hidden.
 //!
 //! @input  tao events and `UserEvent`s.
 //! @output Model updates, pushed UI state, effects executed via `app::effects`, windows via `app::surfaces`.
-//! @dependencies tao, wry, global-hotkey, tray-icon, app::{events, model, worker, tray_host, hotkeys}, ui, tray::{hover, positioning}
+//! @dependencies tao, wry, global-hotkey, tray-icon, app::{events, model, worker, tray_host, hotkeys}, ui, tray::{clicks, positioning}
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
@@ -17,14 +17,15 @@ use wry::WebContext;
 
 use crate::app::events::{Options, SurfaceKind, UserEvent};
 use crate::app::model::{AppModel, ControlRequest, Effect};
+use crate::app::tensor::TensorMsg;
 use crate::app::tray_host::TrayHost;
 use crate::app::worker::{TelemetryConfig, TelemetryDelivery, WorkerMsg};
 use crate::config::{ConfigStore, Settings};
 use crate::ipc::protocol::CapabilitiesReport;
-use crate::platform::windows::{apps_use_light_theme, Autostart};
+use crate::platform::windows::{apps_use_light_theme, session_start_unix, Autostart};
 use crate::telemetry::history::MetricsHistory;
 use crate::telemetry::ProviderErrorEntry;
-use crate::tray::hover::{Hover, HoverAction};
+use crate::tray::clicks::{ClickAction, Clicks, Target};
 use crate::tray::menu;
 use crate::tray::positioning::Rect;
 use crate::ui::bridge::{self, NoticeKind};
@@ -41,15 +42,18 @@ pub(crate) struct Runtime {
     pub(crate) tray: Option<TrayHost>,
     pub(crate) popup: Option<Surface>,
     pub(crate) flyout: Option<Surface>,
-    /// Which processor the visible flyout shows; `None` while hidden.
+    /// Which processor the visible details popup shows; `None` while hidden.
     pub(crate) flyout_kind: Option<FlyoutKind>,
-    pub(crate) hover: Hover,
-    /// Create or drop the flyout to match settings at the next loop turn (needs the event-loop target).
+    /// When and for which icon the details popup last closed (a click on that icon then means "close").
+    pub(crate) flyout_hidden: Option<(FlyoutKind, Instant)>,
+    pub(crate) clicks: Clicks,
+    /// Create or drop the details popup to match settings at the next loop turn (needs the event-loop target).
     pub(crate) sync_flyout: bool,
     pub(crate) full: Option<Surface>,
     pub(crate) web_context: WebContext,
     pub(crate) worker_tx: Sender<WorkerMsg>,
     pub(crate) control_tx: Sender<ControlRequest>,
+    pub(crate) tensor_tx: Sender<TensorMsg>,
     pub(crate) hotkeys: Option<GlobalHotKeyManager>,
     pub(crate) hotkey: Option<HotKey>,
     pub(crate) history: MetricsHistory,
@@ -76,25 +80,30 @@ impl Runtime {
         proxy: EventLoopProxy<UserEvent>,
         worker_tx: Sender<WorkerMsg>,
         control_tx: Sender<ControlRequest>,
+        tensor_tx: Sender<TensorMsg>,
         started: Instant,
         opts: Options,
         startup_warning: Option<String>,
     ) -> Self {
         let web_dir = store.dir().join("WebView2");
+        let mut model = AppModel::new(settings, Autostart::default().is_enabled(), apps_use_light_theme());
+        model.set_session_start(session_start_unix());
         Self {
-            model: AppModel::new(settings, Autostart::default().is_enabled(), apps_use_light_theme()),
+            model,
             store,
             proxy,
             tray: None,
             popup: None,
             flyout: None,
             flyout_kind: None,
-            hover: Hover::new(),
+            flyout_hidden: None,
+            clicks: Clicks::new(),
             sync_flyout: true,
             full: None,
             web_context: WebContext::new(Some(web_dir)),
             worker_tx,
             control_tx,
+            tensor_tx,
             hotkeys: GlobalHotKeyManager::new().ok(),
             hotkey: None,
             history: MetricsHistory::new(MONITOR_HISTORY),
@@ -145,15 +154,12 @@ impl Runtime {
                         self.sync_flyout_surface(target);
                     }
                 }
-                let action = self.hover.tick(self.now());
-                self.apply_hover(action);
             }
             _ => {}
         }
-        let hover_at = self.hover.deadline().map(|ms| self.started + Duration::from_millis(ms));
         *flow = if self.exit {
             ControlFlow::Exit
-        } else if let Some(t) = [self.deactivate_at, hover_at].into_iter().flatten().min() {
+        } else if let Some(t) = self.deactivate_at {
             ControlFlow::WaitUntil(t)
         } else {
             ControlFlow::Wait
@@ -165,48 +171,36 @@ impl Runtime {
         !self.popup_visible && !self.full_visible && self.flyout_kind.is_none()
     }
 
-    fn apply_hover(&mut self, action: Option<HoverAction>) {
-        match action {
-            Some(HoverAction::Show(kind, anchor)) if !self.popup_visible && self.flyout.is_some() => {
-                self.show_flyout(kind, anchor)
+    fn on_tray(&mut self, event: TrayIconEvent) {
+        // Only the left button has gestures; hovering is left to the tooltip Windows shows.
+        let (id, rect, state) = match event {
+            TrayIconEvent::Click { id, rect, button: MouseButton::Left, button_state, .. } => {
+                (id, rect, Some(button_state))
             }
-            Some(HoverAction::Show(..)) => self.hover.dismissed(),
-            Some(HoverAction::Hide) => self.hide_flyout(),
-            None => {}
+            TrayIconEvent::DoubleClick { id, rect, button: MouseButton::Left, .. } => (id, rect, None),
+            _ => return,
+        };
+        let rect = icon_rect(&rect);
+        let action = match state {
+            Some(MouseButtonState::Down) => {
+                self.clicks.down();
+                None
+            }
+            Some(MouseButtonState::Up) => Target::from_icon_id(&id.0).and_then(|t| self.clicks.up(t, rect)),
+            None => Some(self.clicks.double(rect)),
+        };
+        // With "open popup on tray click" off, a left click opens the tray menu instead.
+        if let (Some(action), true) = (action, self.model.settings.general.open_popup_on_tray_click) {
+            self.on_click_action(action);
         }
     }
 
-    fn on_tray(&mut self, event: TrayIconEvent) {
-        let now = self.now();
-        let flyout = |id: &tray_icon::TrayIconId| FlyoutKind::from_icon_id(&id.0);
-        match event {
-            TrayIconEvent::Enter { id, rect, .. } => {
-                if let Some(kind) = flyout(&id) {
-                    let action = self.hover.enter(kind, icon_rect(&rect), now);
-                    self.apply_hover(action);
-                }
-            }
-            TrayIconEvent::Leave { id, .. } => {
-                if let Some(kind) = flyout(&id) {
-                    let action = self.hover.leave(kind, now);
-                    self.apply_hover(action);
-                }
-            }
-            TrayIconEvent::Click { rect, button, button_state, .. } => {
-                let action = self.hover.click();
-                self.apply_hover(action);
-                if button == MouseButton::Left
-                    && button_state == MouseButtonState::Up
-                    && self.model.settings.general.open_popup_on_tray_click
-                {
-                    self.toggle_popup(Some(icon_rect(&rect)));
-                }
-            }
-            TrayIconEvent::DoubleClick { .. } => {
-                let action = self.hover.click();
-                self.apply_hover(action);
-            }
-            _ => {}
+    fn on_click_action(&mut self, action: ClickAction) {
+        match action {
+            ClickAction::ToggleDetails(kind, anchor) => self.toggle_details(kind, anchor),
+            ClickAction::ToggleMain(anchor) => self.toggle_popup(Some(anchor)),
+            ClickAction::OpenMain(anchor) if !self.popup_visible => self.show_popup(Some(anchor)),
+            ClickAction::OpenMain(_) => {}
         }
     }
 
@@ -270,11 +264,15 @@ impl Runtime {
 
     fn on_window_event(&mut self, id: tao::window::WindowId, event: WindowEvent<'_>) {
         let is_popup = self.popup.as_ref().is_some_and(|p| p.window.id() == id);
+        let is_flyout = self.flyout.as_ref().is_some_and(|f| f.window.id() == id);
         let is_full = self.full.as_ref().is_some_and(|f| f.window.id() == id);
         match event {
-            WindowEvent::Focused(false) if is_popup => self.deactivate_at = Some(Instant::now() + DEACTIVATE_DELAY),
-            WindowEvent::Focused(true) if is_popup => self.deactivate_at = None,
+            WindowEvent::Focused(false) if is_popup || is_flyout => {
+                self.deactivate_at = Some(Instant::now() + DEACTIVATE_DELAY)
+            }
+            WindowEvent::Focused(true) if is_popup || is_flyout => self.deactivate_at = None,
             WindowEvent::CloseRequested if is_popup => self.hide_popup(),
+            WindowEvent::CloseRequested if is_flyout => self.hide_flyout(),
             WindowEvent::CloseRequested if is_full => self.hide_full(),
             WindowEvent::ThemeChanged(_) => {
                 self.model.set_light_system_theme(apps_use_light_theme());
@@ -293,6 +291,11 @@ impl Runtime {
             UserEvent::ControlDone(req, result) => {
                 let effects = self.model.on_control_result(&req, result, now);
                 self.perform(effects, Some(target));
+            }
+            UserEvent::Tensor(done) => {
+                self.model.on_tensor(done.rates, done.boot, now);
+                self.push_state();
+                self.push_flyout();
             }
             UserEvent::Tray(event) => self.on_tray(event),
             UserEvent::Menu(m) => {
@@ -317,10 +320,13 @@ impl Runtime {
 
     fn on_page_message(&mut self, kind: SurfaceKind, json: &str, target: &EventLoopWindowTarget<UserEvent>) {
         let Ok(cmd) = bridge::parse_command(json) else { return };
-        // The flyout is display-only: it may announce itself, never command anything.
+        // The details popup is display-only: it may announce itself and ask to be closed (Escape),
+        // never command anything else.
         if kind == SurfaceKind::Flyout {
-            if matches!(cmd, bridge::UiCommand::Ready) {
-                self.push_flyout();
+            match cmd {
+                bridge::UiCommand::Ready => self.push_flyout(),
+                bridge::UiCommand::ClosePopup => self.hide_flyout(),
+                _ => {}
             }
             return;
         }

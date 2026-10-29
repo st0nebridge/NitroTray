@@ -362,3 +362,67 @@ fn info_notices_are_shorter_lived() {
     assert!(m.ui_state(INFO_NOTICE_MS - 1).notice.is_some());
     assert!(m.ui_state(INFO_NOTICE_MS).notice.is_none());
 }
+
+mod tensor {
+    use super::*;
+    use nitrotray::unlock::boot_log::{BootReport, BootStatus};
+    use nitrotray::unlock::state::TensorRates;
+    use nitrotray::unlock::view::ViewState;
+
+    const LOCKED: TensorRates = TensorRates { acc32_tflops: 27.6, acc16_tflops: 55.1 };
+    const UNLOCKED: TensorRates = TensorRates { acc32_tflops: 54.0, acc16_tflops: 55.1 };
+
+    #[test]
+    fn the_unlock_view_starts_unknown_and_is_in_every_ui_state() {
+        let mut m = connected();
+        let s = m.ui_state(0);
+        assert_eq!(s.unlock.state, ViewState::Unknown);
+        assert_eq!(serde_json::to_value(&s).unwrap()["unlock"]["state"], "unknown");
+    }
+
+    #[test]
+    fn a_finished_check_reaches_the_view() {
+        let mut m = connected();
+        assert!(m.tensor_due(0, false));
+        m.begin_tensor();
+        assert_eq!(m.ui_state(0).unlock.state, ViewState::Checking);
+        assert!(!m.tensor_due(1_000, true), "one check at a time");
+        m.on_tensor(Ok(LOCKED), Ok(None), 2_000);
+        assert_eq!(m.ui_state(2_000).unlock.state, ViewState::Locked);
+        m.begin_tensor();
+        m.on_tensor(Ok(UNLOCKED), Ok(None), 70_000);
+        assert_eq!(m.unlock_view(70_000).state, ViewState::Unlocked);
+    }
+
+    #[test]
+    fn a_lost_unlock_needs_the_session_start() {
+        let mut m = connected();
+        m.set_session_start(Some(1_793_000_000));
+        m.begin_tensor();
+        let report = BootReport {
+            run: "RUN0028".into(),
+            status: BootStatus::Unlocked,
+            build: "auto".into(),
+            written_unix: Some(1_793_000_000 - 2),
+        };
+        m.on_tensor(Ok(LOCKED), Ok(Some(report)), 1_000);
+        assert_eq!(m.unlock_view(1_000).state, ViewState::Lost);
+    }
+
+    #[test]
+    fn nothing_is_checked_or_claimed_with_driver_queries_off() {
+        let mut settings = Settings::default();
+        settings.telemetry.gpu_driver_queries = false;
+        let mut m = AppModel::new(settings, false, false);
+        assert!(!m.tensor_due(0, false) && !m.tensor_due(0, true), "the setting also forbids waking the GPU for it");
+        m.begin_tensor();
+        m.on_tensor(Ok(UNLOCKED), Ok(None), 1_000);
+        assert_eq!(m.ui_state(1_000).unlock.state, ViewState::Unknown);
+    }
+
+    #[test]
+    fn the_recheck_command_asks_for_a_forced_check() {
+        let mut m = connected();
+        assert_eq!(m.on_command(UiCommand::RecheckTensor, 0), vec![Effect::RecheckTensor]);
+    }
+}

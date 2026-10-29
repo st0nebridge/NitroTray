@@ -11,6 +11,7 @@ use crate::acer::services::{self, ServiceState};
 use crate::app::events::UserEvent;
 use crate::app::model::{connection_text, Effect};
 use crate::app::runtime::Runtime;
+use crate::app::tensor::TensorMsg;
 use crate::app::worker::{TelemetryConfig, WorkerMsg};
 use crate::platform::windows::{apps_use_light_theme, Autostart};
 use crate::ui::bridge::{self, IntegrationInfo, NoticeKind, WindowData};
@@ -29,6 +30,19 @@ impl Runtime {
         }
         if changed {
             self.push_state();
+        }
+    }
+
+    /// Starts a tensor-core check when one is due (or `force`d); the caller pushes the new state.
+    pub(crate) fn request_tensor(&mut self, force: bool) {
+        let now = self.now();
+        if !self.model.tensor_due(now, force) {
+            return;
+        }
+        self.model.begin_tensor();
+        if self.tensor_tx.send(TensorMsg::Check).is_err() {
+            let why = "the tensor check worker stopped";
+            self.model.on_tensor(Err(why.into()), Err(why.into()), now);
         }
     }
 
@@ -71,6 +85,7 @@ impl Runtime {
             Effect::RefreshModes => {
                 let _ = self.worker_tx.send(WorkerMsg::RefreshModes);
             }
+            Effect::RecheckTensor => self.request_tensor(true),
             Effect::Exit => {
                 let _ = self.worker_tx.send(WorkerMsg::Stop);
                 if let Some(t) = &mut self.tray {

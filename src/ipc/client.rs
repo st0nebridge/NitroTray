@@ -1,11 +1,12 @@
 //! @module ipc::client
 //! @description Typed helper client: one request per connection over a pluggable transport.
 //!
-//! @input  Typed calls (capabilities, sensors, fan/performance state, mode changes).
+//! @input  Typed calls (capabilities, sensors, fan/performance state, mode changes, unlocker boot report).
 //! @output Decoded payloads, or `ClientError` distinguishing "helper absent" from "helper said no".
-//! @dependencies ipc::protocol, ipc::pipe (Windows transport), acer, controls
+//! @dependencies ipc::protocol, ipc::pipe (Windows transport), acer, controls, unlock
 use crate::acer::{FanState, PerformanceState, SensorReadings};
 use crate::controls::{FanCurveProfile, FanMode, PerformanceMode};
+use crate::unlock::boot_log::BootReport;
 
 use super::protocol::{self, CapabilitiesReport, ErrorCode, ErrorInfo, ProviderStatus, Request, Response};
 
@@ -94,6 +95,11 @@ impl<T: Transport> HelperClient<T> {
 
     pub fn performance(&self) -> Result<PerformanceState, ClientError> {
         Self::field(self.call(&Request::GetPerformanceMode)?, |r| r.performance, "performance")
+    }
+
+    /// The newest unlocker boot report; `None` when the helper found no log.
+    pub fn unlock_boot(&self) -> Result<Option<BootReport>, ClientError> {
+        Ok(self.call(&Request::GetUnlockBoot)?.unlock_boot)
     }
 
     pub fn set_fan_mode(&self, mode: FanMode, curve: Option<FanCurveProfile>) -> Result<String, ClientError> {

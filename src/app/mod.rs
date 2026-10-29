@@ -1,7 +1,7 @@
 //! @module app
 //! @description The tray host application: pure state model, background workers, and the event-loop runtime.
 //!
-//! @dependencies app::{model, worker, events, bootstrap, runtime, surfaces, effects, tray_host, hotkeys}
+//! @dependencies app::{model, ui_state, worker, tensor, events, bootstrap, runtime, surfaces, effects, tray_host, hotkeys}
 #[cfg(windows)]
 pub mod bootstrap;
 #[cfg(windows)]
@@ -15,6 +15,8 @@ pub mod model;
 pub mod runtime;
 #[cfg(windows)]
 pub mod surfaces;
+pub mod tensor;
 #[cfg(windows)]
 pub mod tray_host;
+pub mod ui_state;
 pub mod worker;

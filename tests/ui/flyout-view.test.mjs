@@ -159,3 +159,56 @@ test('flyout markup and drawing', () => {
   const { doc, log } = render(cpuState(), { size: [312, 122] });
   matchSnapshot('flyout', `${lines(doc.getElementById('flyout').innerHTML)}\n\n${log.join('\n')}\n`);
 });
+
+const gpuState = (unlock) => ({ ...cpuState(), kind: 'gpu', title: 'GPU', unlock });
+const unlock = (over = {}) => ({
+  state: 'locked', badge: 'Locked', detail: 'FP32-accumulate tensor rate is at half rate (ratio 0.50), checked 12 s ago.',
+  summary: 'ratio 0.50, checked 12 s ago', ratio: 0.5, age_s: 12, boot: 'Unlocker run RUN0028: unlocked at boot', ...over,
+});
+
+test('the CPU details popup has no tensor row', () => {
+  const { doc } = render({ ...cpuState(), unlock: null });
+  assert.equal(doc.getElementById('flyout').classList.contains('has-tensor'), false);
+  assert.equal(doc.getElementById('fly-tensor').hidden, true);
+});
+
+test('the GPU details popup shows the lock state, the reading and the unlocker run', () => {
+  const { doc } = render(gpuState(unlock()));
+  assert.equal(doc.getElementById('flyout').classList.contains('has-tensor'), true);
+  const row = doc.getElementById('fly-tensor');
+  assert.equal(row.hidden, false);
+  assert.equal(row.dataset.state, 'locked');
+  assert.equal(doc.getElementById('tensor-badge').textContent, 'Locked');
+  assert.equal(doc.getElementById('tensor-sum').textContent, 'ratio 0.50, checked 12 s ago');
+  assert.equal(doc.getElementById('tensor-line2').textContent, 'Unlocker run RUN0028: unlocked at boot');
+  assert.match(row.title, /half rate/);
+});
+
+test('an unlocked and a lost GPU read differently', () => {
+  for (const [state, badge] of [['unlocked', 'Unlocked'], ['lost', 'Unlock lost']]) {
+    const { doc } = render(gpuState(unlock({ state, badge })));
+    assert.equal(doc.getElementById('fly-tensor').dataset.state, state);
+    assert.equal(doc.getElementById('tensor-badge').textContent, badge);
+  }
+});
+
+test('without a reading the second line says why, and the row does not say "unknown" as a claim', () => {
+  const { doc } = render(gpuState(unlock({ state: 'unknown', badge: '', summary: '', boot: null, detail: 'Not checked yet.' })));
+  assert.equal(doc.getElementById('fly-tensor').dataset.state, 'unknown');
+  assert.equal(doc.getElementById('tensor-badge').textContent, 'Not checked');
+  assert.equal(doc.getElementById('tensor-sum').textContent, '');
+  assert.equal(doc.getElementById('tensor-line2').textContent, 'Not checked yet.');
+});
+
+test('a checking GPU keeps its last boot line', () => {
+  const { doc } = render(gpuState(unlock({ state: 'checking', badge: 'Checking', summary: '', detail: 'Checking the tensor-core rate…' })));
+  assert.equal(doc.getElementById('tensor-badge').textContent, 'Checking');
+  assert.equal(doc.getElementById('tensor-line2').textContent, 'Unlocker run RUN0028: unlocked at boot');
+});
+
+test('the tensor row goes away again when the next state has none', () => {
+  const { doc, view } = render(gpuState(unlock()));
+  view.render({ ...cpuState(), unlock: null });
+  assert.equal(doc.getElementById('flyout').classList.contains('has-tensor'), false);
+  assert.equal(doc.getElementById('fly-tensor').hidden, true);
+});

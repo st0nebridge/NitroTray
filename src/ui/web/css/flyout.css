@@ -1,7 +1,7 @@
 /*
  * @module flyout.css
- * @description Hover flyout over the CPU/GPU tray icons (340×214 DIP): header with live values, a large
- *              temperature/fan history graph, and min/avg/max with a legend.
+ * @description Details popup opened from the CPU/GPU tray icons (340×214 DIP): header with live values, a large
+ *              temperature/fan history graph, for the GPU a tensor-core lock row, and min/avg/max with a legend.
  */
 html, body { width: 340px; height: 214px; }
 
@@ -45,6 +45,21 @@ html, body { width: 340px; height: 214px; }
 .axis-top { left: 3px; top: 3px; }
 .axis-bottom { left: 3px; bottom: 3px; }
 .axis-fan { right: 3px; top: 3px; }
+
+/* ---------- GPU tensor-core row (162–188): the graph gives up 22 DIP for it ---------- */
+.flyout.has-tensor .fly-graph { height: 100px; }
+.fly-tensor { position: absolute; left: 14px; right: 14px; top: 163px; height: 26px; font-size: 10.5px; line-height: 13px; color: var(--text-2); }
+.fly-tensor[hidden] { display: none; }
+.tensor-l1, .tensor-l2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tensor-l1 { display: flex; align-items: center; gap: 5px; }
+.tensor-l1 b { font-weight: 600; color: var(--text); }
+.tensor-l2 { color: var(--text-3); }
+.tensor-label { color: var(--text-3); }
+.tensor-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); flex: none; }
+.fly-tensor[data-state="unlocked"] .tensor-dot { background: var(--ok); }
+.fly-tensor[data-state="unlocked"] b { color: var(--ok); }
+.fly-tensor[data-state="lost"] .tensor-dot { background: var(--warm); }
+.fly-tensor[data-state="lost"] b { color: var(--warm); }
 
 /* ---------- Footer (186–206) ---------- */
 .fly-ftr {

@@ -26,7 +26,7 @@ export const SECTIONS = [
     select('telemetry.temperature_unit', 'Temperature unit', [['celsius', '°C'], ['fahrenheit', '°F']]),
     select('telemetry.refresh_rate', 'Refresh rate while open', [['fast', 'Fast (0.5 s)'], ['normal', 'Normal (0.5–1 s)'], ['relaxed', 'Relaxed (1–2 s)']]),
     num('telemetry.background_interval_ms', 'Tray icon refresh (ms)', 1000, 5000, 500, 'While the popup is closed. Only temperatures and fans are read.'),
-    check('telemetry.gpu_driver_queries', 'GPU driver telemetry (NVML)', 'Utilisation and clocks while a window is open. May briefly wake the discrete GPU.'),
+    check('telemetry.gpu_driver_queries', 'GPU driver telemetry (NVML)', 'Utilisation and clocks while a window is open, and the tensor-core lock check. May briefly wake the discrete GPU.'),
     check('telemetry.fan_telemetry', 'Fan telemetry'),
     num('telemetry.cpu_thresholds.warm_c', 'CPU warm from (°C)', 30, 110), num('telemetry.cpu_thresholds.hot_c', 'CPU red from (°C)', 30, 110),
     num('telemetry.cpu_thresholds.critical_c', 'CPU critical from (°C)', 30, 110),
@@ -86,7 +86,7 @@ export function buildForm(form) {
   form.innerHTML = SECTIONS.map((s) => {
     if (s.id === 'icons') {
       const card = (key, name) => `<div class="icon-card" data-icon-card="${key}"><h3><canvas width="32" height="32" data-preview="${key}"></canvas>${name}</h3>${ICON_FIELDS.map((r) => rowHtml(r, `tray_icons.${key}.`)).join('')}</div>`;
-      return `<fieldset><legend>${s.legend}</legend>${rowHtml(check('tray_icons.show_app_icon', 'NitroTray app icon'), '')}${rowHtml(check('tray_icons.hover_details', 'Details on hover', 'Hovering the CPU or GPU icon shows its temperature and fan history instead of the plain tooltip.'), '')}<p class="muted">System Informer–style graphs: temperature fill with the fan-speed line on top. Windows may hide new icons in the overflow — use “Show icons on taskbar” below.</p><div class="icon-grid">${card('cpu', 'CPU icon')}${card('gpu', 'GPU icon')}</div></fieldset>`;
+      return `<fieldset><legend>${s.legend}</legend>${rowHtml(check('tray_icons.show_app_icon', 'NitroTray app icon'), '')}<p class="muted">System Informer–style graphs: temperature fill with the fan-speed line on top. Click the CPU or GPU icon for its temperature and fan history; double-click it for the main popup. Windows may hide new icons in the overflow — use “Show icons on taskbar” below.</p><div class="icon-grid">${card('cpu', 'CPU icon')}${card('gpu', 'GPU icon')}</div></fieldset>`;
     }
     if (s.id === 'integration') return `<fieldset><legend>${s.legend}</legend><dl class="kv" id="integration-kv"></dl>${rowHtml({ path: 'integration.nitrosense_app_id', label: 'NitroSense app id', type: 'text' }, '')}<div class="actions" id="integration-actions"></div></fieldset>`;
     return `<fieldset><legend>${s.legend}</legend>${s.rows.map((r) => rowHtml(r, '')).join('')}</fieldset>`;

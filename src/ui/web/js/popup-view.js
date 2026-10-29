@@ -4,7 +4,7 @@
  *
  * @input  The popup root element, a `send(command)` function, and `UiState` objects.
  * @output DOM updates (text, classes, ARIA) and commands: set_fan_mode, set_performance_mode,
- *         open_*, close_popup, drag_window, dismiss_notice.
+ *         open_*, close_popup, drag_window, dismiss_notice, recheck_tensor.
  * @dependencies icons, format, segmented
  */
 import { hydrate } from './icons.js';
@@ -32,6 +32,7 @@ export function createPopupView(root, send) {
   $('#perf-head').addEventListener('click', () => send({ cmd: 'open_nitro_sense' }));
   for (const id of ['#fan-cpu', '#fan-gpu']) $(id).addEventListener('click', () => send({ cmd: 'open_fan_curve' }));
   $('.notice-x').addEventListener('click', () => send({ cmd: 'dismiss_notice' }));
+  $('#tensor').addEventListener('click', () => send({ cmd: 'recheck_tensor' }));
   $('.hdr').addEventListener('mousedown', (e) => {
     if (e.button === 0 && !e.target.closest('button')) send({ cmd: 'drag_window' });
   });
@@ -53,6 +54,17 @@ export function createPopupView(root, send) {
     temp.querySelector('small').textContent = unitSymbol;
     el.querySelector('.util').textContent = pct(p?.util);
     el.querySelector('.mhz b').textContent = int(p?.mhz);
+  }
+
+  /** The GPU's tensor-core lock badge: shown only when there is something to claim, explained in its tooltip. */
+  function renderTensor(u) {
+    const pill = $('#tensor');
+    pill.hidden = !u?.badge;
+    if (pill.hidden) return;
+    pill.dataset.state = u.state;
+    pill.querySelector('.tensor-text').textContent = u.badge;
+    pill.title = [u.detail, u.boot, 'Click to check again.'].filter(Boolean).join('\n');
+    pill.setAttribute('aria-label', `Tensor cores: ${u.badge}. ${u.detail} Click to check again.`);
   }
 
   function renderNotice(n) {
@@ -91,6 +103,7 @@ export function createPopupView(root, send) {
     other.textContent = state.performance_other ? `${state.performance_other} active` : '';
     $('#btn-settings .badge').hidden = connected;
     $('#btn-settings').title = connected ? 'Settings' : state.connection_text;
+    renderTensor(state.unlock);
     renderNotice(state.notice);
   }
 

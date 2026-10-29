@@ -196,7 +196,7 @@ SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC_APP} "The tray app: popup, CPU/GPU graph tray icons, monitoring window and settings."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC_HELPER} "LocalSystem service with six typed Acer firmware commands. Without it, firmware temperatures, fan speeds and the fan/performance controls are unavailable."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC_HELPER} "LocalSystem service with seven typed commands: Acer firmware reads and writes, and a read-only summary of the tensor unlocker's boot log. Without it, firmware temperatures, fan speeds and the fan/performance controls are unavailable."
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC_AUTOSTART} "Start ${APP_NAME} when you sign in."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 

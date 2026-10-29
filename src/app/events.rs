@@ -8,6 +8,7 @@ use tray_icon::menu::MenuEvent;
 use tray_icon::TrayIconEvent;
 
 use crate::app::model::ControlRequest;
+use crate::app::tensor::TensorResult;
 use crate::app::worker::TelemetryDelivery;
 
 /// Which webview a page message came from.
@@ -20,6 +21,8 @@ pub enum SurfaceKind {
 
 pub enum UserEvent {
     Telemetry(Box<TelemetryDelivery>),
+    /// A finished tensor-core check.
+    Tensor(Box<TensorResult>),
     ControlDone(ControlRequest, Result<String, String>),
     Tray(TrayIconEvent),
     Menu(MenuEvent),

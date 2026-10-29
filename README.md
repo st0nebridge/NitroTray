@@ -11,7 +11,7 @@ Built and verified on an **Acer Nitro AN515-58** (i7-12650H, RTX 4060).
 
 ## Features
 
-- **Popup** (left-click the tray icon, or **Win+Alt+N**): a rounded, notch-free flyout anchored to the tray on
+- **Popup** (left-click the app icon, double-click a CPU or GPU icon, or **Win+Alt+N**): a rounded, notch-free flyout anchored to the tray on
   any taskbar edge; closes on Escape, the × button or clicking elsewhere; stays instantiated so it reopens
   instantly. Styled after the NitroSense reference, laid out on one alignment grid.
 - **Telemetry**: CPU/GPU temperature (Acer firmware), utilisation and clock (Windows PDH / NVIDIA NVML),
@@ -21,8 +21,13 @@ Built and verified on an **Acer Nitro AN515-58** (i7-12650H, RTX 4060).
 - **Custom fan curves**: editor with drag handles, 20 % duty floor, 100 % at ≥ 90 °C, fail-safe to Auto.
 - **Graph tray icons**: separate CPU and GPU icons, each drawing temperature (filled) and fan speed (line)
   history. Colours, series, fill, temperature range and fan scale are configurable per icon.
-- **Hover details**: rest the pointer on the CPU or GPU icon for a flyout with that icon's history drawn
-  large, the current temperature and fan speed, and min/avg/max over the window.
+- **Click details**: hovering the CPU or GPU icon shows Windows' plain tooltip; a single click opens a popup
+  with that icon's history drawn large, the current temperature and fan speed, and min/avg/max over the
+  window; a double click opens the main popup instead. Escape or clicking elsewhere closes either.
+- **Tensor-core lock state**: GeForce parts run FP16 with FP32 accumulate at half rate unless the throttle is
+  lifted (for example by a UEFI unlocker). A small badge in the popup's GPU block and a row in the GPU details
+  popup say whether it is lifted *now* (a timing test, see below) and, when the helper can read it, what the
+  unlocker's boot log says. Click the badge to measure again.
 - **Full monitoring** window (5-minute charts), **settings**, **diagnostics export**.
 
 ![Tray icons: CPU graph, GPU graph, app icon (24 px at 150 % scaling, shown 6x)](docs/images/tray-icons@6x.png)
@@ -30,11 +35,11 @@ Built and verified on an **Acer Nitro AN515-58** (i7-12650H, RTX 4060).
 *Tray icons as the notification area draws them: CPU temperature (red fill) with fan speed (cyan), GPU (orange
 with green), then the app icon. Rendered by the icon code itself; a unit test keeps the image current.*
 
-| Hover the CPU icon | Hover the GPU icon |
+| Click the CPU icon | Click the GPU icon |
 |---|---|
-| ![CPU hover flyout: temperature and fan history, live values, min/avg/max](docs/images/flyout-cpu@2x.png) | ![GPU hover flyout](docs/images/flyout-gpu@2x.png) |
+| ![CPU details popup: temperature and fan history, live values, min/avg/max](docs/images/flyout-cpu@2x.png) | ![GPU details popup](docs/images/flyout-gpu@2x.png) |
 
-*Hover flyouts (2x), with sample history shaped like the AN515-58's readings: CPU bursts between about 60
+*Details popups (2x), with sample history shaped like the AN515-58's readings: CPU bursts between about 60
 and 92 °C under light load while the GPU stays in the 50s.*
 
 ## How it works
@@ -45,10 +50,30 @@ normal users, so NitroTray is split in two:
 | Process | Runs as | Does |
 |---|---|---|
 | `NitroTray.exe` | you | tray icons, popup, windows, OS telemetry |
-| `NitroTrayService.exe` | LocalSystem service, installed to `%ProgramFiles%\NitroTray` | six typed commands over an ACL-restricted local pipe; no generic hardware access |
+| `NitroTrayService.exe` | LocalSystem service, installed to `%ProgramFiles%\NitroTray` | seven typed commands over an ACL-restricted local pipe; no generic hardware access |
 
 Without the helper the app still runs: OS telemetry works and every hardware control is shown read-only.
 Details: [docs/architecture.md](docs/architecture.md), [docs/acer-discovery.md](docs/acer-discovery.md).
+
+### Tensor-core lock state
+
+The badge comes from two independent sources, shown together:
+
+- **A timing test, now.** When the popup opens, when you click the GPU icon, or when you click the badge, the app
+  creates a short-lived CUDA context through the driver (`nvcuda.dll`; no toolkit, no extra install), times
+  FP16 multiply-accumulate with FP32 and with FP16 accumulate for about a third of a second, and destroys the
+  context again. The FP32 rate over the FP16 rate is about 0.50 while the throttle is on and about 1.0 once it
+  is lifted (above 0.75 counts as unlocked). It needs an Ampere-or-newer NVIDIA GPU, wakes a sleeping discrete
+  GPU like any other use of it, and is skipped with *Settings › Telemetry › GPU driver telemetry* off.
+  A reading is reused for a minute.
+- **The unlocker's boot log.** The helper reads the newest `RUNnnnn.TXT` that the UEFI tensor unlocker leaves in
+  `\GPU4090-UNLOCK\` on the EFI system partition (found by its content, nothing is mounted, nothing is written)
+  and returns only a typed summary. A log from this Windows session that says "unlocked" together with a
+  half-rate reading now is shown as *Unlock lost*: the RTX was reset after the unlock (runtime power-off, sleep
+  or a driver reload).
+
+Nothing is claimed without a measurement: no reading yet, no NVIDIA driver, or driver telemetry off all show no
+badge, never "locked".
 
 ## Install
 
@@ -99,8 +124,8 @@ This builds both executables in release mode and writes `dist/NitroTray-<version
 
 | Action | How |
 |---|---|
-| Open / close popup | left-click a NitroTray tray icon, or Win+Alt+N |
-| CPU / GPU history | hover the CPU or GPU tray icon (*Settings › Tray icons › Details on hover*) |
+| Open / close popup | left-click the NitroTray app icon, double-click a CPU or GPU icon, or Win+Alt+N |
+| CPU / GPU history | single-click the CPU or GPU tray icon (click it again, press Escape or click elsewhere to close) |
 | Tray menu | right-click: Open, Performance Mode ›, Fan Mode ›, Full Monitoring, Settings, Open NitroSense, Start with Windows, Exit |
 | Fan curve editor | Fan Control header or a fan cell; *Custom* opens it when no curve is saved |
 | Exit from a script | `NitroTray.exe --exit` |
@@ -142,7 +167,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File bin/dev-run.ps1
 
 `dev-run.ps1` runs the tray against a **simulated** helper on a private pipe and config folder. `-Real` runs
 the helper elevated via gsudo against the firmware; `-Stop` shuts both down. `bin/ui-snap.ps1` renders the
-popup (`-View popup`) or a hover flyout (`-View flyout-cpu|flyout-gpu`) with headless Edge at 2x into
+popup (`-View popup`) or a details popup (`-View flyout-cpu|flyout-gpu`) with headless Edge at 2x into
 `reports/ui/`, the source of `docs/images/*@2x.png`; `tests/ui/preview/compare.html` diffs the popup
 against a NitroSense screenshot, which is not distributed: save your own at
 `docs/reference/nitrosense-compact-reference.webp` (2x scale). `docs/images/tray-icons@6x.png` is written by `docs_images_test` with
@@ -163,8 +188,10 @@ gsudo powershell -NoProfile -ExecutionPolicy Bypass -File tests/installer/roundt
 ```
 
 The live webview check runs a release build in isolated instances (own config, WebView2 folder and
-DevTools port) and confirms the popup and hover-flyout pages load and the event loop stays responsive,
-at start-up and when hover details are turned on from Settings:
+DevTools port) and confirms the popup and details-popup pages load and the event loop stays responsive,
+at start-up and when a graph icon is turned on from Settings, then posts the notification area's own mouse
+messages to a graph icon: a click opens the details popup, a second click closes it, a double click ends
+with the main popup open:
 
 ```bash
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/live/webviews.ps1

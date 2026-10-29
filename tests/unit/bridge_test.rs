@@ -104,3 +104,9 @@ fn pending_action_serialises_kind_and_value() {
     assert_eq!(serde_json::to_value(FanRowState::Unavailable).unwrap(), "unavailable");
     assert_eq!(serde_json::to_value(NoticeKind::Info).unwrap(), "info");
 }
+
+#[test]
+fn the_recheck_command_parses_and_takes_no_fields() {
+    assert_eq!(parse_command(r#"{"cmd":"recheck_tensor"}"#), Ok(UiCommand::RecheckTensor));
+    assert!(parse_command(r#"{"cmd":"recheck_tensor","force":true}"#).is_err());
+}
